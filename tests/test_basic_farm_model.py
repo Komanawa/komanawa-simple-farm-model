@@ -4,7 +4,7 @@ on: 4/07/23
 """
 import matplotlib.pyplot as plt
 
-from komanawa.komanawa_simple_farm_model.base_simple_farm_model import BaseSimpleFarmModel
+from komanawa.simple_farm_model.base_simple_farm_model import BaseSimpleFarmModel
 import numpy as np
 import pandas as pd
 from pathlib import Path

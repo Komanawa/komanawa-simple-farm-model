@@ -3,7 +3,7 @@ created matt_dumont
 on: 3/07/23
 """
 import numpy as np
-from komanawa.komanawa_simple_farm_model.base_simple_farm_model import BaseSimpleFarmModel
+from komanawa.simple_farm_model.base_simple_farm_model import BaseSimpleFarmModel
 import pandas as pd
 
 class SimpleDairyFarm(BaseSimpleFarmModel):
