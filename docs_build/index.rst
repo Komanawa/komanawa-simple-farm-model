@@ -1,12 +1,10 @@
-Name
+Kо̄manawa-|light_name|
 #########################################
 
-a small repo that holds:
-
-* MannKendall: non parametric trend detection
-* SeasonalKendall: non parametric trend detection with seasonality
-* MultiPartKendall: non parametric change point detection
-* SeasonalMultiPartKendall: non parametric change point detection with seasonality
+:Author: |author|
+:copyright: |copyright|
+:Version: |release|
+:Date: |today|
 
 .. toctree::
     :maxdepth: 2
