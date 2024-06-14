@@ -1,4 +1,5 @@
 Kо̄manawa simple-farm-model
 ###############################
-created with api
+
+Documentation is available at: .. todo add documentation link
 

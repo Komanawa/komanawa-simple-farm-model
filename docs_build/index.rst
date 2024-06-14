@@ -10,4 +10,4 @@ Kо̄manawa-|light_name|
     :maxdepth: 2
     :hidden:
 
-    Code documentation<autoapi/komanawa/komanawa-simple-farm-model/index.rst>
+    Code documentation<autoapi/komanawa/simple_farm_model/index.rst>

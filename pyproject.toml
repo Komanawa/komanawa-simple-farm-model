@@ -13,15 +13,19 @@ where = ["src/"]
 
 [project]
 name = "komanawa-simple-farm-model"
-version = "v1.0.0"
+dynamic = ["version"] # version set in version.py
 authors = [
     { name = "Matt Dumont", email = "Matt@komanawa.com" },
 ]
-description = "" # todo
+description = "a very simple farm economic model developed for the Sustainable Land Management and Climate Change (SLMACC) Climate Shock Resilience and Adaptation project."
 readme = "README.rst"
 license = { file = "LICENSE" }
 requires-python = ">=3.11"
 dependencies = [
+    "pandas>=2.0.3",
+    "numpy>=1.25.2",
+    'matplotlib>=3.4.3',
+    'netCDF4',
 ]
 
 classifiers = [
@@ -30,7 +34,10 @@ classifiers = [
     "Operating System :: OS Independent",
 ]
 
+[tool.setuptools.dynamic]
+version = { attr = "komanawa.gw_age_tools.version.__version__" }
+
 [project.urls]
 Homepage = "https://github.com/Komanawa-Solutions-Ltd/komanawa-simple-farm-model"
 Issues = "https://github.com/Komanawa-Solutions-Ltd/komanawa-simple-farm-model/issues"
-Documentation = "" # todo
+Documentation = "https://github.com/Komanawa-Solutions-Ltd/komanawa-simple-farm-model/issues" # todo change to pages once up

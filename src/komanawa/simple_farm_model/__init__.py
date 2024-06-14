@@ -1,0 +1,1 @@
+from komanawa.simple_farm_model.version import __version__

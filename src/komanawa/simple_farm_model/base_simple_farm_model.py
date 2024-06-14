@@ -2,19 +2,15 @@
 created matt_dumont 
 on: 26/06/23
 
-This module contains the BaseSimpleFarmModel class and its child class DummySimpleFarm. These classes are used to
-simulate a simple farm economic model.
+This module contains the BaseSimpleFarmModel class and its child class DummySimpleFarm. These classes are used to simulate a simple farm economic model.
 
-The BaseSimpleFarmModel class is an abstract base class that provides the basic structure and methods for the farm
-economic model. It includes methods for running the model, saving results to a netCDF file, reading in a model from a
-netCDF file, saving results to CSV files, and plotting results.
+The BaseSimpleFarmModel class is an abstract base class that provides the basic structure and methods for the farm economic model. It includes methods for running the model, saving results to a netCDF file, reading in a model from a netCDF file, saving results to CSV files, and plotting results.
 
-The DummySimpleFarm class is a child class of BaseSimpleFarmModel. It is a placeholder class that needs to be
-implemented with specific farm model logic.
+The DummySimpleFarm class is a child class of BaseSimpleFarmModel. It is a placeholder class that needs to be implemented with specific farm model logic.
 
-The module also includes a helper function get_colors() for generating a list of colors for plotting, and a dictionary
-month_len that provides the number of days in each month.
+The module also includes a helper function get_colors() for generating a list of colors for plotting, and a dictionary month_len that provides the number of days in each month.
 """
+
 import datetime
 import numpy as np
 import pandas as pd
@@ -23,24 +19,26 @@ from copy import deepcopy
 import netCDF4 as nc
 import warnings
 import matplotlib.pyplot as plt
-from matplotlib.cm import get_cmap
+
+try:
+    from matplotlib.cm import get_cmap
+except ImportError:
+    from matplotlib.pyplot import get_cmap
 
 
 class BaseSimpleFarmModel(object):
     """
     Abstract base class for a simple farm economic model.
 
-    This class provides the basic structure and methods for the farm economic model. It includes methods for running
-    the model, saving results to a netCDF file, reading in a model from a netCDF file, saving results to CSV files,
-    and plotting results.
+    This class provides the basic structure and methods for the farm economic model. It includes methods for running the model, saving results to a netCDF file, reading in a model from a netCDF file, saving results to CSV files, and plotting results.
 
     The class needs to be subclassed and the following methods need to be implemented in the subclass:
 
+    - convert_pg_to_me()
     - calculate_feed_needed()
     - calculate_production()
-    - calculate_next_state()
     - calculate_sup_feed()
-    - calculate_running_cost()
+    - import_feed_and_change_state()
     - reset_state()
 
     Class Attributes:
@@ -52,6 +50,12 @@ class BaseSimpleFarmModel(object):
 
         :cvar states: (dict): Dictionary of state numbers to state descriptions.
         :cvar month_reset: (int or None): Month number when the farm state is reset. If None then the farm state is not reset.
+        :cvar homegrown_efficiency: (float): Efficiency of homegrown feed (e.g. 0.8 means 20% of feed is lost due to inefficency).
+        :cvar supplemental_efficiency: (float): Efficiency of supplemental feed. (e.g. 0.8 means 20% of feed is lost due to inefficency).
+        :cvar sup_feedout_cost: (float): Cost of feed out. (e.g. 0.5 means $0.50 per MJ of feed).
+        :cvar homegrown_store_efficiency: (float): Efficiency of storing homegrown feed. (e.g. 0.8 means 20% of feed is lost due to inefficency).
+        :cvar homegrown_storage_cost: (float): Cost of storing homegrown feed. (e.g. 0.5 means $0.50 per MJ of feed).
+
 
     Instance Attributes:
 
@@ -67,13 +71,11 @@ class BaseSimpleFarmModel(object):
             - :ivar _run: (bool): Flag indicating if the model has been run.
 
         - Model input attributes (all transition to model_shape (time, nsims))
-            - :ivar interest_rate: (np.ndarray): Array of interest rates for each time step in the model.
             - :ivar pg: (np.ndarray): Array of pasture growth amounts for each time step in the model.
             - :ivar product_price: (np.ndarray): Array of product prices for each time step in the model.
             - :ivar sup_feed_cost: (np.ndarray): Array of supplementary feed costs for each time step in the model.
 
         - Model calculation attributes
-            - :ivar model_debt_service: (np.ndarray): Array of debt service amounts for each time step in the model.
             - :ivar model_feed: (np.ndarray): Array of feed amounts for each time step in the model.
             - :ivar model_feed_cost: (np.ndarray): Array of feed cost amounts for each time step in the model.
             - :ivar model_feed_demand: (np.ndarray): Array of feed demand amounts for each time step in the model.
@@ -81,25 +83,24 @@ class BaseSimpleFarmModel(object):
             - :ivar model_money: (np.ndarray): Array of money amounts for each time step in the model.
             - :ivar model_prod: (np.ndarray): Array of product amounts for each time step in the model.
             - :ivar model_prod_money: (np.ndarray): Array of product money amounts for each time step in the model.
-            - :ivar model_running_cost: (np.ndarray): Array of running cost amounts for each time step in the model.
             - :ivar model_state: (np.ndarray): Array of state numbers for each time step in the model.
 
     Process:
 
-        The run_model method in the BaseSimpleFarmModel class is responsible for running the farm economic model. Here's a step-by-step description of the process:
+        The run_model method in the BaseSimpleFarmModel class is responsible for running the farm economic model. Here's a step-by-step description of the process. The model is run on a daily timestep with an assumed 365 day year:
 
-        #. The method first checks if the model has already been run. If it has, it raises an assertion error.
+        #. The method first checks if the model has already been run. If it has, it raises an error, pass, or rerun (see run_model docs).
         #. It then enters a loop that iterates over each month in the model's timeline. For each month, it performs the following steps:
             #. It sets the start of day values for current money, current feed, and current state.
-            #. It calculates the pasture growth and adds it to the current feed.
-            #. It calculates the feed needed for the cattle and subtracts it from the current feed. The feed demand is also stored.
+            #. It allows for supplemental actions at the start of the day, if needed. These can be set in the supplmental_action_first method.
+            #. It calculates the pasture growth and converts it to ME (MJ/ha). Both values are stored.
+            #. It calculates the feed needed for the cattle.
+            #. It identifies surplus homegrown feed, deficit feed, and perfect feed scenarios. By applying the feed efficiency (homegrown_efficiency and supplemental_efficiency). If there is surplus homegrown it stores the surplus (which includes a cost per MJ), if supplemental feed (MJ) is needed feeds out the supplemental needed (including supplemental efficiency), which reduces the feed store and incurs a feed out cost.
             #. It calculates the product produced and stores it.
             #. It calculates the profit from selling the product and adds it to the current money.
-            #. It calculates the supplementary feed needed, adds it to the current feed, and stores it.
-            #. It calculates the cost of the supplementary feed and subtracts it from the current money. The feed cost is also stored.
-            #. It calculates the running costs and subtracts them from the current money. The running costs are also stored.
-            #. It calculates the debt servicing costs and subtracts them from the current money. The debt servicing costs are also stored.
-            #. It calculates the next state of the farm. If it's the start of a new year, it resets the state.
+            #. It assesses the feed store, imports feed if needed, and changes the state of the farm.
+            #. It allows for supplemental actions at the end of the day, if needed. These can be set in the supplmental_action_last method.
+            #. If it's the start of a new year, it resets the state.
             #. Finally, it sets the key values for the current state, feed, and money.
         #. After the loop, it sets the _run attribute to True, indicating that the model has been run.
 
@@ -109,19 +110,19 @@ class BaseSimpleFarmModel(object):
     # create dictionary of attribute name to attribute long name (unit)
     long_name_dict = {
         'state': 'farm state (none)',
-        'feed': 'feed on farm (kgDM/ha)',
+        'feed': 'feed on farm (MJ/ha)',
         'money': 'profit/loss (NZD)',
-        'feed_demand': 'feed demand (kgDM/ha)',
+        'feed_demand': 'feed demand (MJ/ha)',
         'prod': 'product produced (kg/ha)',
         'prod_money': 'profit from product (NZD)',
-        'feed_imported': 'supplemental feed imported (kgDM/ha)',
+        'feed_imported': 'supplemental feed imported (MJ/ha)',
         'feed_cost': 'cost of feed imported (NZD)',
-        'running_cost': 'general farm running cost (ex. feed beyond expected feed) (NZD)',
-        'debt_servicing': 'debt servicing (NZD)',
         'pg': 'pasture growth (kgDM/ha)',
         'product_price': 'product price (NZD/kg)',
         'feed_price': 'cost of feed imported (NZD)',
-        'interest_rate': 'interest rate (%/yr)'
+        'surplus_homegrown': 'surplus homegrown feed for the time step (MJ/ha)',
+        'sup_feed_needed': 'supplemental feed needed for the time step (MJ/ha)',
+        'home_growth_me': 'homegrown feed (pasture growth) converted to ME for the time step (MJ/ha)',
 
     }
     # create dictionary of attribute name to object name
@@ -134,13 +135,24 @@ class BaseSimpleFarmModel(object):
         'prod_money': 'model_prod_money',
         'feed_imported': 'model_feed_imported',
         'feed_cost': 'model_feed_cost',
-        'running_cost': 'model_running_cost',
-        'debt_servicing': 'model_debt_service',
         'pg': 'pg',
         'product_price': 'product_price',
         'feed_price': 'sup_feed_cost',
-        'interest_rate': 'interest_rate'
+        'surplus_homegrown': 'surplus_homegrown',
+        'sup_feed_needed': 'sup_feed_needed',
+        'home_growth_me': 'home_growth_me',
     }
+
+    required_class_attrs = (
+        'states',
+        'month_reset',
+        'homegrown_efficiency',
+        'supplemental_efficiency',
+        'sup_feedout_cost',
+        'homegrown_store_efficiency',
+        'homegrown_storage_cost',
+    )
+
     inpath = None
 
     states = None  # dummy value, must be set in child class
@@ -148,8 +160,6 @@ class BaseSimpleFarmModel(object):
     all_days = None
     all_months = None
     all_year = None
-    interest_rate = None
-    model_debt_service = None
     model_feed = None
     model_feed_cost = None
     model_feed_demand = None
@@ -157,7 +167,6 @@ class BaseSimpleFarmModel(object):
     model_money = None
     model_prod = None
     model_prod_money = None
-    model_running_cost = None
     model_shape = None
     model_state = None
     nsims = None
@@ -165,21 +174,25 @@ class BaseSimpleFarmModel(object):
     product_price = None
     sup_feed_cost = None
     time_len = None
+    homegrown_efficiency = None
+    supplemental_efficiency = None
+    sup_feedout_cost = None
+    homegrown_store_efficiency = None
+    homegrown_storage_cost = None
 
-    def __init__(self, all_months, istate, pg, ifeed, imoney, sup_feed_cost, product_price, interest_rate,
-                 monthly_input=True):
+    def __init__(self, all_months, istate, pg, ifeed, imoney, sup_feed_cost, product_price, monthly_input=True):
         """
 
         :param all_months: integer months, defines mon_len and time_len
         :param istate: initial state number or np.ndarray shape (nsims,) defines number of simulations
         :param pg: pasture growth kgDM/ha/day np.ndarray shape (mon_len,) or (mon_len, nsims)
-        :param ifeed: initial feed number or np.ndarray shape (nsims,)
-        :param imoney: initial money number or np.ndarray shape (nsims,)
-        :param sup_feed_cost: cost of supplementary feed $/kgDM or np.ndarray shape (nsims,) or (mon_len, nsims)
-        :param product_price: income price $/kg product or np.ndarray shape (nsims,) or (mon_len, nsims)
-        :param interest_rate: interest rate %/year or np.ndarray shape (nsims,) or (mon_len, nsims)
-        :param monthly_input: if True, monthly input, if False, daily input
+        :param ifeed: initial feed number float or np.ndarray shape (nsims,)
+        :param imoney: initial money number float or np.ndarray shape (nsims,)
+        :param sup_feed_cost: cost of supplementary feed $/kgDM float or np.ndarray shape (nsims,) or (mon_len, nsims)
+        :param product_price: income price $/kg product float or np.ndarray shape (nsims,) or (mon_len, nsims)
+        :param monthly_input: if True, monthly input, if False, daily input (365 days per year)
         """
+
         # define model shape
         assert set(all_months).issubset(set(range(1, 13))), f'months must be in range 1-12'
         all_month_org = deepcopy(all_months)
@@ -229,12 +242,6 @@ class BaseSimpleFarmModel(object):
         self.product_price = self._manage_input_shape('product_price', product_price, monthly_input,
                                                       org_month_len, all_month_org)
 
-        self.interest_rate = self._manage_input_shape('interest_rate', interest_rate, monthly_input,
-                                                      org_month_len, all_month_org)  # todo propage through
-        if np.nanmax(self.interest_rate) < 1:
-            raise ValueError(f'interest_rate must be in %/year, got: {np.nanmax(self.interest_rate)=} '
-                             f'which is less than 1 suggesting it is in fraction/year')
-
         assert set(istate).issubset(
             set(self.states.keys())), f'unknown istate: {set(istate)} must be one of {self.states}'
 
@@ -249,8 +256,10 @@ class BaseSimpleFarmModel(object):
         self.model_prod_money = np.full(self.model_shape, np.nan)
         self.model_feed_imported = np.full(self.model_shape, np.nan)
         self.model_feed_cost = np.full(self.model_shape, np.nan)
-        self.model_running_cost = np.full(self.model_shape, np.nan)
-        self.model_debt_service = np.full(self.model_shape, np.nan)
+
+        self.surplus_homegrown = np.full(self.model_shape, np.nan)
+        self.sup_feed_needed = np.full(self.model_shape, np.nan)
+        self.home_growth_me = np.full(self.model_shape, np.nan)
 
         # set initial values
         self.model_state[0, :] = istate
@@ -269,12 +278,21 @@ class BaseSimpleFarmModel(object):
             assert v.shape == (
                 self.model_shape[0],), f'bad shape for {v} {v.shape=} must be {(self.model_shape[0],)}'
 
-    def run_model(self):
+        # check inputs (some should be set by subclass)
+        self._check_class_attributes()
+
+    def run_model(self, raise_on_rerun=True, rerun=False):
         """
         run the model see docstring for process
+        :param raise_on_rerun: if True, raise an error if the model has already been run, if False, just return (don't rerun the model)
         :return:
         """
-        assert not self._run, f'model has already been run'
+        if self._run and not rerun:
+            if raise_on_rerun:
+                raise ValueError('model has already been run')
+            else:
+                return
+
         for i_month in range(1, self.time_len + 1):
             month = self.all_months[i_month]
             day = self.all_days[i_month]
@@ -284,13 +302,56 @@ class BaseSimpleFarmModel(object):
             current_feed = deepcopy(self.model_feed[i_month - 1, :])
             current_state = deepcopy(self.model_state[i_month - 1, :])
 
-            # pasture growth
-            current_feed += self.pg[i_month, :]
+            # allow supplemental actions at start of day, if not reset then just passes current_state/feed/money through
+            current_state, current_feed, current_money = self.supplmental_action_first(i_month, month, day,
+                                                                                       current_state, current_feed,
+                                                                                       current_money)
 
-            # feed cattle
+            # pasture growth
+            pgrowth = self.pg[i_month, :]
+
+            # convert pg in ME
+            home_grown_me = self.convert_pg_to_me(pgrowth, current_state)
+            self.home_growth_me[i_month, :] = home_grown_me
+
+            # calculate feed needed for cattle
             feed_needed = self.calculate_feed_needed(i_month, month, current_state)
-            current_feed = current_feed - feed_needed
             self.model_feed_demand[i_month, :] = feed_needed
+
+            idx_perfect = feed_needed == home_grown_me * self.homegrown_efficiency
+            idx_deficit_feed = feed_needed > home_grown_me * self.homegrown_efficiency
+            idx_surplus_feed = feed_needed < home_grown_me * self.homegrown_efficiency
+
+            assert np.all(idx_perfect | idx_deficit_feed | idx_surplus_feed), 'bad feed needed calculation'
+            surplus_homegrown = np.zeros_like(feed_needed)
+            sup_feed_needed = np.zeros_like(feed_needed)
+
+            surplus_homegrown[idx_perfect] = 0
+            sup_feed_needed[idx_perfect] = 0
+
+            surplus_homegrown[idx_deficit_feed] = 0
+            sup_feed_needed[idx_deficit_feed] = (feed_needed[idx_deficit_feed]
+                                                 - home_grown_me[idx_deficit_feed] * self.homegrown_efficiency)
+            surplus_homegrown[idx_surplus_feed] = (home_grown_me[idx_surplus_feed]
+                                                   - feed_needed[idx_surplus_feed] / self.homegrown_efficiency)
+            sup_feed_needed[idx_surplus_feed] = 0
+
+            # store homegrown surplus
+            self.surplus_homegrown[i_month, :] = surplus_homegrown.copy() * self.homegrown_store_efficiency
+
+            storage_cost = self.homegrown_storage_cost * surplus_homegrown
+            delta_store_feed = surplus_homegrown * self.homegrown_store_efficiency
+            current_money += storage_cost
+            current_feed += delta_store_feed
+
+            # supplement feed needed
+            sup_feed_needed = sup_feed_needed * self.supplemental_efficiency
+            self.sup_feed_needed[i_month, :] = sup_feed_needed.copy()
+            feedout_cost = sup_feed_needed * self.sup_feedout_cost
+            assert np.all(feedout_cost >= 0), 'feedout cost must be positive'
+            assert np.all(sup_feed_needed >= 0), 'sup_feed_needed must be positive'
+            current_money -= feedout_cost
+            current_feed -= sup_feed_needed
 
             # produce product
             produced_product = self.calculate_production(i_month, month, current_state)
@@ -301,35 +362,20 @@ class BaseSimpleFarmModel(object):
             self.model_prod_money[i_month, :] = prod_money
             current_money += prod_money
 
-            sup_feed = self.calculate_sup_feed(i_month, month, current_state)
-            self.model_feed_imported[i_month, :] = sup_feed
-            current_feed += sup_feed
+            # import feed | state change
+            next_state, feed_imported, sup_feed_cost = self.import_feed_and_change_state(
+                i_month, month, current_state, current_feed)
 
-            sup_feed_cost = sup_feed * self.sup_feed_cost[i_month, :]
             self.model_feed_cost[i_month, :] = sup_feed_cost
+            self.model_feed_imported[i_month, :] = feed_imported
             current_money -= sup_feed_cost
+            current_feed += feed_imported
 
-            # add running_cost
-            run_costs = self.calculate_running_cost(i_month, month, current_state)
-            self.model_running_cost[i_month, :] = run_costs
-            current_money -= run_costs
+            # allow supplemental actions at end of day, if not reset then just passes current_state/feed/money through
+            current_state, current_feed, current_money = self.supplmental_action_last(i_month, month, day,
+                                                                                      current_state, current_feed,
+                                                                                      current_money)
 
-            # add debt servicing
-            debt_servicing = self.model_money[i_month - 1, :] * (1 + self.interest_rate[i_month, :] / 100)
-            self.model_debt_service[i_month, :] = debt_servicing
-            current_money -= debt_servicing
-
-            # todo debt service ratio servicing G:\Shared drives\Z20002SLM_SLMACC\farm_model\farm health index.xlsx
-            #  over what period?, here it is cumulative for the model run
-            # todo include (capital spend/depreciation,tax, mangment wage) or is this in the run costs (NOT IN RUN COSTS)
-            # todo still need to save the data., add to attribute description
-            # todo used for each year, typically from 1 aug from reset to reset.
-            opt_surplus = self.model_prod_money - (self.model_feed_cost + self.model_running_cost)
-            debt_service_ratio = (np.nansum(opt_surplus[:i_month, :], axis=0)
-                                  / np.nansum(self.model_debt_service[:i_month + 1, :], axis=0))
-
-            # calculate next state
-            next_state = self.calculate_next_state(i_month, month, current_state)
             # new year? reset state
             if month == self.month_reset and day == 1:
                 next_state = self.reset_state(i_month)
@@ -340,6 +386,34 @@ class BaseSimpleFarmModel(object):
             self.model_money[i_month, :] = current_money
 
         self._run = True
+
+    def supplmental_action_first(self, i_month, month, day, current_state, current_feed,
+                                 current_money):
+        """
+        supplemental actions that might be needed for sub models at the end of each time step.  This is a placeholder to allow rapid development without modifying the base class. it is absolutely reasonable to leave as is.
+        :param i_month:
+        :param month:
+        :param day:
+        :param current_state:
+        :param current_feed:
+        :param current_money:
+        :return:
+        """
+        return current_state, current_feed, current_money
+
+    def supplmental_action_last(self, i_month, month, day, current_state, current_feed,
+                                current_money):
+        """
+        supplemental actions that might be needed for sub models at the end of each time step.  This is a placeholder to allow rapid development without modifying the base class. it is absolutely reasonable to leave as is.
+        :param i_month:
+        :param month:
+        :param day:
+        :param current_state:
+        :param current_feed:
+        :param current_money:
+        :return:
+        """
+        return current_state, current_feed, current_money
 
     def _manage_input_shape(self, input_key, input_val, monthly_input, org_month_len, all_month_org):
         """
@@ -373,6 +447,23 @@ class BaseSimpleFarmModel(object):
                                                f'got: {out.shape=}')
         return out
 
+    def _check_class_attributes(self):
+        """
+        check that the class attributes are set
+        :return:
+        """
+        for pretty_name, attr_name in self.obj_dict.items():
+            assert hasattr(self, attr_name), f'{pretty_name} must be set in subclass'
+            assert getattr(self, attr_name) is not None, f'{pretty_name} must be set in subclass'
+            assert isinstance(getattr(self, attr_name), np.ndarray), f'{pretty_name} must be np.ndarray'
+            assert getattr(self, attr_name).shape == self.model_shape, (
+                f'{pretty_name} shape must be: {self.model_shape=}, ')
+            assert pretty_name in self.long_name_dict, f'{pretty_name} must be in long_name_dict'
+
+        for attr in self.required_class_attrs:
+            assert hasattr(self, attr), f'{attr} must be set in subclass'
+            assert getattr(self, attr) is not None, f'{attr} must be set in subclass'
+
     def save_results_nc(self, outpath):
         """
         save results to netcdf file
@@ -381,8 +472,8 @@ class BaseSimpleFarmModel(object):
         :return:
         """
         assert self._run, 'model must be run before saving results'
-        assert isinstance(outpath, Path) or isinstance(outpath,
-                                                       str), f'outpath must be Path or str, got: {type(outpath)}'
+        assert isinstance(outpath, Path) or isinstance(outpath, str), (
+            f'outpath must be Path or str, got: {type(outpath)}')
         outpath = Path(outpath)
         outpath.parent.mkdir(exist_ok=True, parents=True)
 
@@ -394,78 +485,25 @@ class BaseSimpleFarmModel(object):
             ds.variables['sims'][:] = range(self.nsims)
             ds.variables['sims'].setncattr('long_name', 'simulation number')
 
-            ds.createVariable('month', 'i4', ('time',))
-            ds.variables['month'][:] = self.all_months
-            ds.variables['month'].setncattr('long_name', 'month of the year')
+            # save time variables
+            keys = ['month', 'year', 'day']
+            long_names = ['month of the year', 'year', 'day of the month']
+            attrs = ['all_months', 'all_year', 'all_days']
+            for key, long_name, attr in zip(keys, long_names, attrs):
+                ds.createVariable(key, 'i4', ('time',))
+                ds.variables[key][:] = getattr(self, attr)
+                ds.variables[key].setncattr('long_name', long_name)
 
-            ds.createVariable('year', 'i4', ('time',))
-            ds.variables['year'].setncattr('long_name', 'year')
-            ds.variables['year'][:] = self.all_year
-
-            ds.createVariable('day', 'i4', ('time',))
-            ds.variables['day'].setncattr('long_name', 'day of the month')
-            ds.variables['day'][:] = self.all_days
-
-            ds.createVariable('state', 'i4', ('time', 'nsims'))
-            ds.variables['state'].setncatts({'long_name': 'farm state', 'units': 'none'})
-            ds.variables['state'][:] = self.model_state
-
-            ds.createVariable('feed', 'f8', ('time', 'nsims'))
-            ds.variables['feed'].setncatts({'long_name': 'feed on farm', 'units': 'kgDM/ha'})
-            ds.variables['feed'][:] = self.model_feed
-
-            ds.createVariable('money', 'f8', ('time', 'nsims'))
-            ds.variables['money'].setncatts({'long_name': 'profit/loss', 'units': 'NZD'})
-            ds.variables['money'][:] = self.model_money
-
-            ds.createVariable('feed_demand', 'f8', ('time', 'nsims'))
-            ds.variables['feed_demand'].setncatts({'long_name': 'feed demand', 'units': 'kgDM/ha'})
-            ds.variables['feed_demand'][:] = self.model_feed_demand
-
-            ds.createVariable('prod', 'f8', ('time', 'nsims'))
-            ds.variables['prod'].setncatts({'long_name': 'product produced', 'units': 'kg/ha'})
-            ds.variables['prod'][:] = self.model_prod
-
-            ds.createVariable('prod_money', 'f8', ('time', 'nsims'))
-            ds.variables['prod_money'].setncatts({'long_name': 'profit from product', 'units': 'NZD'})
-            ds.variables['prod_money'][:] = self.model_prod_money
-
-            ds.createVariable('feed_imported', 'f8', ('time', 'nsims'))
-            ds.variables['feed_imported'].setncatts({'long_name': 'supplemental feed imported', 'units': 'kgDM/ha'})
-            ds.variables['feed_imported'][:] = self.model_feed_imported
-
-            ds.createVariable('feed_cost', 'f8', ('time', 'nsims'))
-            ds.variables['feed_cost'].setncatts({'long_name': 'cost of feed imported', 'units': 'NZD'})
-            ds.variables['feed_cost'][:] = self.model_feed_cost
-
-            ds.createVariable('running_cost', 'f8', ('time', 'nsims'))
-            ds.variables['running_cost'].setncatts(
-                {'long_name': 'general farm running cost (ex. feed beyond expected feed)', 'units': 'NZD'})
-            ds.variables['running_cost'][:] = self.model_running_cost
-
-            ds.createVariable('debt_servicing', 'f8', ('time', 'nsims'))
-            ds.variables['debt_servicing'].setncatts(
-                {'long_name': 'debt servicing', 'units': 'NZD'})
-            ds.variables['debt_servicing'][:] = self.model_debt_service
-
-            ds.createVariable('pg', 'f8', ('time', 'nsims'))
-            ds.variables['pg'].setncatts({'long_name': 'pasture growth', 'units': 'kgDM/ha'})
-            ds.variables['pg'][:] = self.pg
-
-            ds.createVariable('product_price', 'f8', ('time', 'nsims'))
-            ds.variables['product_price'].setncatts({'long_name': 'product price', 'units': 'NZD/kg'})
-            ds.variables['product_price'][:] = self.product_price
-
-            ds.createVariable('feed_price', 'f8', ('time', 'nsims'))
-            ds.variables['feed_price'].setncatts({'long_name': 'feed price', 'units': 'NZD/kg'})
-            ds.variables['feed_price'][:] = self.sup_feed_cost
-
-            ds.createVariable('interest_rate', 'f8', ('time', 'nsims'))
-            ds.variables['interest_rate'].setncatts({'long_name': 'interest rate', 'units': 'percent/yr'})
-            ds.variables['interest_rate'][:] = self.interest_rate
+            # save model variables
+            for pretty_name, attr_name in self.obj_dict.items():
+                ds.createVariable(pretty_name, 'f8', ('time', 'nsims'))
+                ds.variables[pretty_name][:] = getattr(self, attr_name)
+                ds.variables[pretty_name].setncattr('long_name', self.long_name_dict[pretty_name])
+                unit_name = self.long_name_dict[pretty_name].split('(')[-1].replace(')', '')
+                ds.variables[pretty_name].setncattr('units', unit_name)
 
     @classmethod
-    def from_input_file(self, inpath):
+    def from_input_file(cls, inpath):
         """
         read in a model from a netcdf file
 
@@ -486,22 +524,17 @@ class BaseSimpleFarmModel(object):
             model_feed = np.array(ds.variables['feed'][:])
             model_money = np.array(ds.variables['money'][:])
             sup_feed_cost = np.array(ds.variables['feed_price'][:])
-            interest_rate = np.array(ds.variables['interest_rate'][:])
 
-            out = self(all_months=all_months[1:], istate=model_state[0], pg=pg[1:],
-                       ifeed=model_feed[0], imoney=model_money[0], sup_feed_cost=sup_feed_cost[1:],
-                       product_price=product_price[1:], interest_rate=interest_rate[1:], monthly_input=False)
-            out.model_state = model_state
-            out.model_feed = model_feed
-            out.model_money = model_money
+            out = cls(all_months=all_months[1:], istate=model_state[0], pg=pg[1:],
+                      ifeed=model_feed[0], imoney=model_money[0], sup_feed_cost=sup_feed_cost[1:],
+                      product_price=product_price[1:], monthly_input=False)
 
-            out.model_feed_demand = np.array(ds.variables['feed_demand'][:])
-            out.model_prod = np.array(ds.variables['prod'][:])
-            out.model_prod_money = np.array(ds.variables['prod_money'][:])
-            out.model_feed_imported = np.array(ds.variables['feed_imported'][:])
-            out.model_feed_cost = np.array(ds.variables['feed_cost'][:])
-            out.model_running_cost = np.array(ds.variables['running_cost'][:])
-            out.model_debt_service = np.array(ds.variables['debt_servicing'][:])
+            for k, v in out.obj_dict.items():
+                assert k in ds.variables, f'{k} not in netcdf file'
+                assert v in out.obj_dict.values(), f'{v} not in obj_dict'
+                assert ds.variables[k].shape == out.model_shape, (
+                    f'bad shape for {k} {ds.variables[k].shape=} must be {out.model_shape=}')
+                setattr(out, v, np.array(ds.variables[k][:]))
 
         # set run status
         out._run = True
@@ -527,25 +560,14 @@ class BaseSimpleFarmModel(object):
             sims = np.atleast_1d(sims)
 
         for sim in sims:
-            outdata = pd.DataFrame({
+            outdata = {
                 'year': self.all_year,
                 'month': self.all_months,
                 'day': self.all_days,
-                'state': self.model_state[:, sim],
-                'feed': self.model_feed[:, sim],
-                'money': self.model_money[:, sim],
-                'feed_demand': self.model_feed_demand[:, sim],
-                'prod': self.model_prod[:, sim],
-                'prod_money': self.model_prod_money[:, sim],
-                'feed_imported': self.model_feed_imported[:, sim],
-                'feed_cost': self.model_feed_cost[:, sim],
-                'running_cost': self.model_running_cost[:, sim],
-                'debt_service': self.model_debt_service[:, sim],
-                'pg': self.pg[:, sim],
-                'product_price': self.product_price[:, sim],
-                'sup_feed_cost': self.sup_feed_cost[:, sim],
-                'interest_rate': self.interest_rate[:, sim]
-            })
+            }
+            for k, v in self.obj_dict.items():
+                outdata[k] = getattr(self, v)[:, sim]
+            outdata = pd.DataFrame(outdata)
             outdata.to_csv(outdir.joinpath(f'sim_{sim}.csv'), index=False)
 
     def plot_results(self, *ys, x='time', sims=None, mult_as_lines=True, twin_axs=False, figsize=(10, 8),
@@ -553,7 +575,7 @@ class BaseSimpleFarmModel(object):
         """
         plot results
 
-        :param ys: one or more of:
+        :param ys: one or more of: self.long_name_dict.keys() for instance:
 
             - 'state' (state of the system)
             - 'feed' (feed on farm)
@@ -563,8 +585,6 @@ class BaseSimpleFarmModel(object):
             - 'prod_money' (production money)
             - 'feed_imported' (feed imported)
             - 'feed_cost' (feed cost)
-            - 'running_cost' (running cost)
-            - 'debt_service' (debt servicing)
             - 'pg' (pasture growth)
             - 'product_price' (product price)
             - 'sup_feed_cost' (supplementary feed cost)
@@ -688,6 +708,30 @@ class BaseSimpleFarmModel(object):
             ax.legend()
         return fig, axs
 
+    def import_feed_and_change_state(self, i_month, month, current_state, current_feed):
+        """
+        import feed and change state
+
+        :param i_month: month index
+        :param month: month
+        :param current_state: current state
+        :param current_feed: current feed
+        :return:
+        """
+        assert pd.api.types.is_integer(i_month), f'month must be int, got {type(i_month)}'
+        raise NotImplementedError('must be set in a child class')
+        return next_state, feed_imported, sup_feed_cost
+
+    def convert_pg_to_me(self, pg, current_state):
+        assert isinstance(pg, np.ndarray), f'pg must be np.ndarray, got {type(pg)}'
+        assert isinstance(current_state, np.ndarray), f'current_state must be np.ndarray, got {type(current_state)}'
+        assert current_state.shape == (
+            self.model_shape[1],), f'current_state must be shape {self.model_shape[1]}, got {current_state.shape}'
+        out = np.zeros(self.model_shape[1])
+        assert out.shape == (self.model_shape[1],), f'out must be shape {self.model_shape[1]}, got {out.shape}'
+        raise NotImplementedError('must be set in a child class')
+        return home_grown_me
+
     def calculate_feed_needed(self, i_month, month, current_state):
         assert pd.api.types.is_integer(month), f'month must be int, got {type(month)}'
         assert isinstance(current_state, np.ndarray), f'current_state must be np.ndarray, got {type(current_state)}'
@@ -696,6 +740,7 @@ class BaseSimpleFarmModel(object):
         out = np.zeros(self.model_shape[1])
         assert out.shape == (self.model_shape[1],), f'out must be shape {self.model_shape[1]}, got {out.shape}'
         raise NotImplementedError('must be set in a child class')
+        return feed_needed
 
     def calculate_production(self, i_month, month, current_state):
         assert pd.api.types.is_integer(month), f'month must be int, got {type(month)}'
@@ -705,49 +750,23 @@ class BaseSimpleFarmModel(object):
         out = np.zeros(self.model_shape[1])
         assert out.shape == (self.model_shape[1],), f'out must be shape {self.model_shape[1]}, got {out.shape}'
         raise NotImplementedError('must be set in a child class')
-
-    def calculate_next_state(self, i_month, month, current_state):
-        assert pd.api.types.is_integer(month), f'month must be int, got {type(month)}'
-        assert isinstance(current_state, np.ndarray), f'current_state must be np.ndarray, got {type(current_state)}'
-        assert current_state.shape == (
-            self.model_shape[1],), f'current_state must be shape {self.model_shape[1]}, got {current_state.shape}'
-        out = np.zeros(self.model_shape[1])
-        assert out.shape == (self.model_shape[1],), f'out must be shape {self.model_shape[1]}, got {out.shape}'
-        raise NotImplementedError('must be set in a child class')
-
-    def calculate_sup_feed(self, i_month, month, current_state):
-        assert pd.api.types.is_integer(month), f'month must be int, got {type(month)}'
-        assert isinstance(current_state, np.ndarray), f'current_state must be np.ndarray, got {type(current_state)}'
-        assert current_state.shape == (
-            self.model_shape[1],), f'current_state must be shape {self.model_shape[1]}, got {current_state.shape}'
-        out = np.zeros(self.model_shape[1])
-        assert out.shape == (self.model_shape[1],), f'out must be shape {self.model_shape[1]}, got {out.shape}'
-        raise NotImplementedError('must be set in a child class')
-
-    def calculate_running_cost(self, i_month, month, current_state):
-        assert pd.api.types.is_integer(month), f'month must be int, got {type(month)}'
-        assert isinstance(current_state, np.ndarray), f'current_state must be np.ndarray, got {type(current_state)}'
-        assert current_state.shape == (
-            self.model_shape[1],), f'current_state must be shape {self.model_shape[1]}, got {current_state.shape}'
-        out = np.zeros(self.model_shape[1])
-        assert out.shape == (self.model_shape[1],), f'out must be shape {self.model_shape[1]}, got {out.shape}'
-        raise NotImplementedError('must be set in a child class')
+        return produced_product
 
     def reset_state(self, i_month, ):
         out = np.zeros(self.model_shape[1])
         assert out.shape == (self.model_shape[1],), f'out must be shape {self.model_shape[1]}, got {out.shape}'
         raise NotImplementedError('must be set in a child class')
+        return next_state
 
 
 class DummySimpleFarm(BaseSimpleFarmModel):
-    states = {  # i value: (nmiking, stock levels)
-        1: ('2aday', 'low'),
-        2: ('2aday', 'norm'),
-        3: ('1aday', 'low'),
-        4: ('1aday', 'norm'),
-    }
-
-    month_reset = 7  # trigger farm reset on day 1 in July
+    states = None
+    month_reset = None
+    homegrown_efficiency = None
+    supplemental_efficiency = None
+    sup_feedout_cost = None
+    homegrown_store_efficiency = None
+    homegrown_storage_cost = None
 
     def calculate_feed_needed(self, i_month, month, current_state):
         assert pd.api.types.is_integer(month), f'month must be int, got {type(month)}'
@@ -767,40 +786,35 @@ class DummySimpleFarm(BaseSimpleFarmModel):
         assert out.shape == (self.model_shape[1],), f'out must be shape {self.model_shape[1]}, got {out.shape}'
         raise NotImplementedError('must be set in a child class')
 
-    def calculate_next_state(self, i_month, month, current_state):
-        assert pd.api.types.is_integer(month), f'month must be int, got {type(month)}'
-        assert isinstance(current_state, np.ndarray), f'current_state must be np.ndarray, got {type(current_state)}'
-        assert current_state.shape == (
-            self.model_shape[1],), f'current_state must be shape {self.model_shape[1]}, got {current_state.shape}'
-        out = np.zeros(self.model_shape[1])
-        assert out.shape == (self.model_shape[1],), f'out must be shape {self.model_shape[1]}, got {out.shape}'
-        raise NotImplementedError('must be set in a child class')
-
-    def calculate_sup_feed(self, i_month, month, current_state):
-        assert pd.api.types.is_integer(month), f'month must be int, got {type(month)}'
-        assert isinstance(current_state, np.ndarray), f'current_state must be np.ndarray, got {type(current_state)}'
-        assert current_state.shape == (
-            self.model_shape[1],), f'current_state must be shape {self.model_shape[1]}, got {current_state.shape}'
-        out = np.zeros(self.model_shape[1])
-        assert out.shape == (self.model_shape[1],), f'out must be shape {self.model_shape[1]}, got {out.shape}'
-        raise NotImplementedError('must be set in a child class')
-
-    def calculate_running_cost(self, i_month, month, current_state):
-        assert pd.api.types.is_integer(month), f'month must be int, got {type(month)}'
-        assert isinstance(current_state, np.ndarray), f'current_state must be np.ndarray, got {type(current_state)}'
-        assert current_state.shape == (
-            self.model_shape[1],), f'current_state must be shape {self.model_shape[1]}, got {current_state.shape}'
-        out = np.zeros(self.model_shape[1])
-        assert out.shape == (self.model_shape[1],), f'out must be shape {self.model_shape[1]}, got {out.shape}'
-        raise NotImplementedError('must be set in a child class')
-
     def reset_state(self, i_month, ):
         out = np.zeros(self.model_shape[1])
         assert out.shape == (self.model_shape[1],), f'out must be shape {self.model_shape[1]}, got {out.shape}'
         raise NotImplementedError('must be set in a child class')
 
+    def convert_pg_to_me(self, pg, current_state):
+        assert isinstance(pg, np.ndarray), f'pg must be np.ndarray, got {type(pg)}'
+        assert isinstance(current_state, np.ndarray), f'current_state must be np.ndarray, got {type(current_state)}'
+        assert current_state.shape == (
+            self.model_shape[1],), f'current_state must be shape {self.model_shape[1]}, got {current_state.shape}'
+        out = np.zeros(self.model_shape[1])
+        assert out.shape == (self.model_shape[1],), f'out must be shape {self.model_shape[1]}, got {out.shape}'
+        raise NotImplementedError('must be set in a child class')
+        return home_grown_me
 
-# todo make child class for dairy, dairy support, beef & sheep
+    def import_feed_and_change_state(self, i_month, month, current_state, current_feed):
+        """
+        import feed and change state
+
+        :param i_month: month index
+        :param month: month
+        :param current_state: current state
+        :param current_feed: current feed
+        :return:
+        """
+        assert pd.api.types.is_integer(i_month), f'month must be int, got {type(i_month)}'
+        raise NotImplementedError('must be set in a child class')
+        return next_state, feed_imported, sup_feed_cost
+
 
 def get_colors(vals, cmap_name='tab20'):
     n_scens = len(vals)
