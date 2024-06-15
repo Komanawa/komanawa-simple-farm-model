@@ -1,6 +1,6 @@
-<mxfile host="Electron" modified="2024-06-03T23:08:34.336Z" agent="Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) draw.io/24.4.8 Chrome/124.0.6367.207 Electron/30.0.6 Safari/537.36" etag="P54kETN4JkQ9E7_GgFuX" version="24.4.8" type="device">
+<mxfile host="Electron" modified="2024-06-14T23:11:57.696Z" agent="Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) draw.io/24.5.3 Chrome/124.0.6367.207 Electron/30.0.6 Safari/537.36" etag="A9v-duGBzTi3UU7ivWVQ" version="24.5.3" type="device">
   <diagram name="Page-1" id="nEB_wdJaSzyscHHI98j8">
-    <mxGraphModel dx="2049" dy="3563" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1654" pageHeight="2336" math="0" shadow="0">
+    <mxGraphModel dx="1434" dy="3220" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1654" pageHeight="2336" math="0" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
@@ -268,31 +268,31 @@
             <mxPoint x="1070" y="940" as="sourcePoint" />
           </mxGeometry>
         </mxCell>
-        <mxCell id="YO4U_gphEnQAlnwwmcGt-1" value="Feed store in ME&lt;div&gt;MJ&lt;/div&gt;" style="rhombus;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+        <mxCell id="YO4U_gphEnQAlnwwmcGt-1" value="Feed store in ME&lt;div&gt;MJ&lt;/div&gt;" style="rhombus;whiteSpace=wrap;html=1;" parent="1" vertex="1">
           <mxGeometry x="1980" y="730" width="110" height="110" as="geometry" />
         </mxCell>
-        <mxCell id="YO4U_gphEnQAlnwwmcGt-2" value="Effecency is only food into cow. (e.g. messy eaters) . not cut efficency" style="rhombus;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+        <mxCell id="YO4U_gphEnQAlnwwmcGt-2" value="Effecency is only food into cow. (e.g. messy eaters) . not cut efficency" style="rhombus;whiteSpace=wrap;html=1;" parent="1" vertex="1">
           <mxGeometry x="2050" y="1020" width="130" height="140" as="geometry" />
         </mxCell>
-        <mxCell id="YO4U_gphEnQAlnwwmcGt-3" value="" style="rhombus;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+        <mxCell id="YO4U_gphEnQAlnwwmcGt-3" value="" style="rhombus;whiteSpace=wrap;html=1;" parent="1" vertex="1">
           <mxGeometry x="2300" y="880" width="80" height="80" as="geometry" />
         </mxCell>
-        <mxCell id="YO4U_gphEnQAlnwwmcGt-4" value="time varient feed/ms cost&amp;nbsp;" style="rhombus;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+        <mxCell id="YO4U_gphEnQAlnwwmcGt-4" value="time varient feed/ms cost&amp;nbsp;" style="rhombus;whiteSpace=wrap;html=1;" parent="1" vertex="1">
           <mxGeometry x="2040" y="540" width="220" height="130" as="geometry" />
         </mxCell>
-        <mxCell id="YO4U_gphEnQAlnwwmcGt-5" value="Decision point&amp;nbsp;&lt;div&gt;proactive decision--&amp;gt; vs reactive decision.&amp;nbsp;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;absolute predictive as starting point&lt;/div&gt;&lt;div&gt;reactive action&lt;/div&gt;&lt;div&gt;fuzzy predictivve--&amp;gt; stocastic.&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;Decision point monthly to 2 weeks... might pay to build variable preiod size.&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;" style="whiteSpace=wrap;html=1;aspect=fixed;" vertex="1" parent="1">
+        <mxCell id="YO4U_gphEnQAlnwwmcGt-5" value="Decision point&amp;nbsp;&lt;div&gt;proactive decision--&amp;gt; vs reactive decision.&amp;nbsp;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;absolute predictive as starting point&lt;/div&gt;&lt;div&gt;reactive action&lt;/div&gt;&lt;div&gt;fuzzy predictivve--&amp;gt; stocastic.&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;Decision point monthly to 2 weeks... might pay to build variable preiod size.&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;" style="whiteSpace=wrap;html=1;aspect=fixed;" parent="1" vertex="1">
           <mxGeometry x="2130" y="1490" width="210" height="210" as="geometry" />
         </mxCell>
-        <mxCell id="YO4U_gphEnQAlnwwmcGt-6" value="1. 1 a day is whole herd&lt;div&gt;&lt;span style=&quot;background-color: initial;&quot;&gt;2. reducing stock? --&amp;gt; dry off some stock?&lt;/span&gt;&lt;/div&gt;&lt;div&gt;3. cull?&lt;/div&gt;&lt;div&gt;&lt;span style=&quot;background-color: initial;&quot;&gt;&lt;br&gt;&lt;/span&gt;&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+        <mxCell id="YO4U_gphEnQAlnwwmcGt-6" value="1. 1 a day is whole herd&lt;div&gt;&lt;span style=&quot;background-color: initial;&quot;&gt;2. reducing stock? --&amp;gt; dry off some stock?&lt;/span&gt;&lt;/div&gt;&lt;div&gt;3. cull?&lt;/div&gt;&lt;div&gt;&lt;span style=&quot;background-color: initial;&quot;&gt;&lt;br&gt;&lt;/span&gt;&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;" parent="1" vertex="1">
           <mxGeometry x="1420" y="1700" width="320" height="140" as="geometry" />
         </mxCell>
-        <mxCell id="YO4U_gphEnQAlnwwmcGt-7" value="cow buckets&lt;div&gt;lactating&lt;/div&gt;&lt;div&gt;replacement&lt;/div&gt;&lt;div&gt;dry off cows...&lt;/div&gt;" style="whiteSpace=wrap;html=1;aspect=fixed;" vertex="1" parent="1">
+        <mxCell id="YO4U_gphEnQAlnwwmcGt-7" value="cow buckets&lt;div&gt;lactating&lt;/div&gt;&lt;div&gt;replacement&lt;/div&gt;&lt;div&gt;dry off cows...&lt;/div&gt;" style="whiteSpace=wrap;html=1;aspect=fixed;" parent="1" vertex="1">
           <mxGeometry x="670" y="1640" width="190" height="190" as="geometry" />
         </mxCell>
-        <mxCell id="YO4U_gphEnQAlnwwmcGt-8" value="&lt;div&gt;Marginal cost/benefit&amp;nbsp;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;ratio $ tod produce vs $ from.&lt;div&gt;probably need to make some assumptions to bring to bring in feed until end oct...&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;hard state approach, or soft state&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;Benefit/cost&lt;/div&gt;&lt;div&gt;Threshold. is time varient.&lt;/div&gt;" style="whiteSpace=wrap;html=1;aspect=fixed;" vertex="1" parent="1">
+        <mxCell id="YO4U_gphEnQAlnwwmcGt-8" value="&lt;div&gt;Marginal cost/benefit&amp;nbsp;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;ratio $ tod produce vs $ from.&lt;div&gt;probably need to make some assumptions to bring to bring in feed until end oct...&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;hard state approach, or soft state&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;Benefit/cost&lt;/div&gt;&lt;div&gt;Threshold. is time varient.&lt;/div&gt;" style="whiteSpace=wrap;html=1;aspect=fixed;" parent="1" vertex="1">
           <mxGeometry x="600" y="1260" width="260" height="260" as="geometry" />
         </mxCell>
-        <mxCell id="YO4U_gphEnQAlnwwmcGt-9" value="Holy grail&lt;div&gt;Farm economic surplus!&lt;/div&gt;" style="whiteSpace=wrap;html=1;aspect=fixed;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+        <mxCell id="YO4U_gphEnQAlnwwmcGt-9" value="Holy grail&lt;div&gt;Farm economic surplus!&lt;/div&gt;" style="whiteSpace=wrap;html=1;aspect=fixed;fillColor=#fff2cc;strokeColor=#d6b656;" parent="1" vertex="1">
           <mxGeometry x="1710" y="-270" width="80" height="80" as="geometry" />
         </mxCell>
       </root>

@@ -188,7 +188,7 @@ class BaseSimpleFarmModel(object):
         :param pg: pasture growth kgDM/ha/day np.ndarray shape (mon_len,) or (mon_len, nsims)
         :param ifeed: initial feed number float or np.ndarray shape (nsims,)
         :param imoney: initial money number float or np.ndarray shape (nsims,)
-        :param sup_feed_cost: cost of supplementary feed $/kgDM float or np.ndarray shape (nsims,) or (mon_len, nsims)
+        :param sup_feed_cost: cost of supplementary feed $/MJ float or np.ndarray shape (nsims,) or (mon_len, nsims)
         :param product_price: income price $/kg product float or np.ndarray shape (nsims,) or (mon_len, nsims)
         :param monthly_input: if True, monthly input, if False, daily input (365 days per year)
         """
@@ -303,9 +303,9 @@ class BaseSimpleFarmModel(object):
             current_state = deepcopy(self.model_state[i_month - 1, :])
 
             # allow supplemental actions at start of day, if not reset then just passes current_state/feed/money through
-            current_state, current_feed, current_money = self.supplmental_action_first(i_month, month, day,
-                                                                                       current_state, current_feed,
-                                                                                       current_money)
+            current_state, current_feed, current_money = self.supplemental_action_first(i_month, month, day,
+                                                                                        current_state, current_feed,
+                                                                                        current_money)
 
             # pasture growth
             pgrowth = self.pg[i_month, :]
@@ -371,14 +371,15 @@ class BaseSimpleFarmModel(object):
             current_money -= sup_feed_cost
             current_feed += feed_imported
 
-            # allow supplemental actions at end of day, if not reset then just passes current_state/feed/money through
-            current_state, current_feed, current_money = self.supplmental_action_last(i_month, month, day,
-                                                                                      current_state, current_feed,
-                                                                                      current_money)
-
             # new year? reset state
             if month == self.month_reset and day == 1:
                 next_state = self.reset_state(i_month)
+
+            # allow supplemental actions at end of day, if not reset then just passes current_state/feed/money through
+            current_state, current_feed, current_money = self.supplemental_action_last(i_month, month, day,
+                                                                                       current_state, current_feed,
+                                                                                       current_money)
+
 
             # set key values
             self.model_state[i_month, :] = next_state
@@ -387,8 +388,8 @@ class BaseSimpleFarmModel(object):
 
         self._run = True
 
-    def supplmental_action_first(self, i_month, month, day, current_state, current_feed,
-                                 current_money):
+    def supplemental_action_first(self, i_month, month, day, current_state, current_feed,
+                                  current_money):
         """
         supplemental actions that might be needed for sub models at the end of each time step.  This is a placeholder to allow rapid development without modifying the base class. it is absolutely reasonable to leave as is.
         :param i_month:
@@ -401,8 +402,8 @@ class BaseSimpleFarmModel(object):
         """
         return current_state, current_feed, current_money
 
-    def supplmental_action_last(self, i_month, month, day, current_state, current_feed,
-                                current_money):
+    def supplemental_action_last(self, i_month, month, day, current_state, current_feed,
+                                 current_money):
         """
         supplemental actions that might be needed for sub models at the end of each time step.  This is a placeholder to allow rapid development without modifying the base class. it is absolutely reasonable to leave as is.
         :param i_month:
