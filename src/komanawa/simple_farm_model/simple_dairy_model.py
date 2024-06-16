@@ -1,4 +1,84 @@
 """
+
+This module contains the SimpleDairyModel class which is a subclass of the BaseSimpleFarmModel class. The SimpleDairyModel class is used to simulate a simple dairy farm model. It includes methods for calculating feed requirements, production, and marginal costs/benefits, among other things.
+
+The General process is defined in the BaseSimpleFarmModel class.  There are a few new features in the SimpleDairyModel class that are not in the BaseSimpleFarmModel class.  These include:
+
+Cow Buckets:
+=============================
+
+The model contains 3 distinct cow buckets, which are parameterised as fraction of total cows per bucket. These buckets are:
+
+* Lactating_cow_fraction
+* Dry_cow_fraction
+* Replacement_fraction
+
+Note that each bucket ranges between 0-1 and the sum of all the buckets must be <= 1, which means we can destock as well as move cows (or partial cows) between buckets. We’re working on a pre-ha basis, but I’m assuming that the farm is significantly large enough that rounding to the nearest 0.01 is sensible.  I have made it, so we can easily change this precision.
+
+Cows in each bucket have different feed requirements, and the model calculates the feed requirements for each bucket separately.
+
+Feed import and state change
+=============================
+
+State changes are fundamentally defined by a low feed store and a comparison between the maringal cost/benefit of the state change.
+
+How to trigger state change
+-------------------------------
+
+# todo define
+
+State change quantization and progression
+--------------------------------------------
+
+The fundamental states are defined as:
+
+* 0: 2 a day, unmodified cow buckets
+* 1: 1 a day, unmodified cow buckets
+* 2: 2 a day, modified cow buckets
+* 3: 1 a day, modified cow buckets
+
+The model allows for shifting of cows between buckets (or reduction in stock), but these changes are quantised into distinct states as defined below:
+
+
+# todo define with andrew
+
+Feed import process.
+-----------------------
+
+Rather than having a just in time feed import process my plan is to import feed whenever the store falls below some threshold (in MJ). Then when we import feed we import N(n=7) days of supplemental feed (that is the amount of supplemental feed imported over the last n days)
+
+
+Marginal cost/benefit calculation
+===================================
+
+The marginal cost and benefit of a potential state change is assessed on the 1st and 15th day of each month.  T
+
+The marginal benefit is calculated as:
+
+* The cost of the feed required to maintain the current state through the rest of the year (to reset) (including feed out cost)
+* vs the cost of the feed required to maintain the alternate state through the rest of the year (to reset) (including feed out cost)
+
+The marginal cost is calculated as:
+
+* the income from the current state through the rest of the year (to reset)
+* the income from the alternate state through the rest of the year (to reset)
+
+In this calculation there are several simplifying assumptions:
+
+1. all home grown feed is utilized (excludes storage costs)
+2. supplemental feed is always available and will be purchased in for the rest of the year (to reset)
+
+These calculations require a future projection of pasture growth, supplemental feed costs, and product prices.
+
+The model allows for three different ways to set these values:
+
+1. use the True values.  all of these variables are prescribed in the init, therefore the model can run the analysis on the true values.  This is accomplished by setting the `marginal_benefit_from_true` and `marginal_cost_from_true` to True.  This is the default setting.
+2. use the monthly mean values from the init (this is the default setting if `marginal_benefit_from_true` and `marginal_cost_from_true` are false).  Here the monthly mean value for the full simulation is calculated from the sim (e.g. each of nsims may have different monthly mean values).
+3. user specified.  Alternatively the user can specify the mean values to use for the marginal cost/benefit calculations. This allows the user to create `optimistic` and `pessimistic` farmer scenarios.  This is done with the `set_mean_pg`, `set_mean_sup_cost`, and `set_mean_product_price` methods.
+
+
+
+
 created matt_dumont 
 on: 6/15/24
 """
@@ -26,6 +106,9 @@ daily_ms_prod = {m: v / month_len[m] for m, v in monly_ms_prod.items()}
 
 
 class SimpleDairyModel(BaseSimpleFarmModel):
+    """
+    A simple dairy farm model that simulates a dairy farm. The model includes methods for calculating feed requirements, production, and marginal costs/benefits, among other things.
+    """
     precision = 2  # round to the nearest 0.01 cows
     states = {
         # i value: (2 a day, unmodified cow buckets)
@@ -131,8 +214,45 @@ class SimpleDairyModel(BaseSimpleFarmModel):
 
         self.set_mean_pg(pg_dict=None, pg_raw=self.pg, months=all_months)
         self.set_mean_sup_cost(sup_dict=None, sup_cost_raw=self.sup_feedout_cost, months=all_months)
+        self.set_mean_product_price(prod_price_dict=None, prod_price_raw=self.product_price, months=all_months)
 
-    def marginal_benefitset_mean_pg(self, pg_dict, pg_raw=None, months=None):
+    def set_mean_product_price(self, prod_price_dict, prod_price_raw=None, months=None):
+        """
+        This method can be used to set a bespoke mean pasture growth for each month to calculate marginal cost/benefit by default this is called on self.prod_price in the init method
+
+        one of prod_price_dict or prod_price_raw and months must be set
+
+        :param prod_price_dict: None or dict of pasture growth values for each month, keys are 1-12, values are float or np.ndarray shape (nsims,)
+        :param prod_price_raw: None or np.ndarray shape (mon_len, nsims) pasture growth values for each day
+        :param months: None or np.ndarray shape (nsims,) of month values for each day
+        :return:
+        """
+        assert (prod_price_dict is None and (prod_price_raw is not None and months is not None)
+                or (prod_price_dict is not None and prod_price_raw is None and months is None)), (
+            'prod_price_dict or prod_price_raw and months must be set')
+        assert isinstance(prod_price_dict, dict), f'prod_price must be dict, got {type(prod_price_dict)}'
+        assert set(prod_price_dict.keys()) == set(
+            range(1, 13)), f'prod_price keys must be 1-12, got {prod_price_dict.keys()}'
+
+        if prod_price_dict is not None:
+            for k, v in prod_price_dict.items():
+                if pd.api.types.is_number(v):
+                    prod_price_dict[k] = np.zeros(self.nsims) + v
+                else:
+                    v = np.atleast_1d(v)
+                    assert v.shape == (self.nsims,), f'prod_price values must be shape {self.nsims=}, got {v.shape}'
+                    prod_price_dict[k] = v
+        else:
+            assert isinstance(prod_price_raw, np.ndarray) and isinstance(months, np.ndarray)
+            assert prod_price_raw.shape == self.model_shape, f'prod_price_raw must be shape {self.model_shape}, got {prod_price_raw.shape}'
+            assert months.shape == (self.nsims,), f'months must be shape {self.nsims=}, got {months.shape}'
+            prod_price_dict = {}
+            for m in range(1, 13):
+                idx = months == m
+                prod_price_dict[m] = prod_price_raw[idx].mean(axis=0)
+        self.mean_prod_price = prod_price_dict
+
+    def set_mean_pg(self, pg_dict, pg_raw=None, months=None):
         """
         This method can be used to set a bespoke mean pasture growth for each month to calculate marginal cost/benefit by default this is called on self.pg in the init method
 
@@ -280,6 +400,9 @@ class SimpleDairyModel(BaseSimpleFarmModel):
                                  current_money):
         """
         supplemental actions that might be needed for sub models at the end of each time step.  This is a placeholder to allow rapid development without modifying the base class. it is absolutely reasonable to leave as is.
+
+        Here we use this function to save the cow buckets to output
+
         :param i_month:
         :param month:
         :param day:
@@ -295,6 +418,14 @@ class SimpleDairyModel(BaseSimpleFarmModel):
         return current_state, current_feed, current_money
 
     def calc_marginal_cost_benefit(self, i_month, month, current_state):
+        """
+        calculate the marginal cost and benefit of a potential state change
+
+        :param i_month: model step
+        :param month: integer month
+        :param current_state: the current states of all models
+        :return:
+        """
         current_year = self.all_year[i_month]
         stop_idx = np.argmax(self.all_year == current_year + 1)
 
@@ -309,10 +440,16 @@ class SimpleDairyModel(BaseSimpleFarmModel):
         current_1day_idxs = np.in1d(current_state, self.milk_1_aday_states)
         current_future_product[:, current_1day_idxs] *= self.one_a_daymilk_production_fraction
         # convert max production to $
+
         if self.marginal_cost_from_true:
-            current_future_product = current_future_product * self.product_price[i_month:stop_idx]
+            use_mean_product_price = self.product_price[i_month:stop_idx]
         else:
-            current_future_product = current_future_product * self.product_price.mean()
+            use_mean_product_price = np.zeros(len(remaining_months), self.nsims)
+            for i in range(month, 13):
+                idx = remaining_months == i
+                use_mean_product_price[idx] = self.mean_prod_price[i]
+
+        current_future_product = current_future_product * use_mean_product_price
         current_future_product = current_future_product.sum(axis=0)
         self.out_cur_fut_prod[i_month] = current_future_product
 
@@ -324,10 +461,8 @@ class SimpleDairyModel(BaseSimpleFarmModel):
         alt_1day_idxs = np.in1d(next_state, self.milk_1_aday_states)
         alternate_production[:, alt_1day_idxs] *= self.one_a_daymilk_production_fraction
         # convert max production to $
-        if self.marginal_cost_from_true:
-            alternate_production = alternate_production * self.product_price[i_month:stop_idx]
-        else:
-            alternate_production = alternate_production * self.product_price.mean()
+
+        alternate_production = alternate_production * use_mean_product_price
         alternate_production = alternate_production.sum(axis=0)
         self.out_alt_fut_prod[i_month] = alternate_production
 
@@ -408,7 +543,13 @@ class SimpleDairyModel(BaseSimpleFarmModel):
         self.replacement_fraction[reduce_idx] = next_fraction_replacement[reduce_idx]
         return out_next_state
 
-    def _calc_next_state_quant(self, current_state):
+    def calc_next_state_quant(self, current_state):
+        """
+        calculate the possible next state down (lower feed requirements) from  the current state
+
+        :param current_state: the current state for all farms
+        :return:
+        """
         # todo some threshold on the amount of feed imported in the last fornight, etc.
         # todo calculate the next quant state down, does this rely on the month? preivous avaliblity, past feed import, etc...
         # options = 1 a day, reduce cattle numbers, dry off cattle, etc.
