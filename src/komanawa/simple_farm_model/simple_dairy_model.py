@@ -88,14 +88,14 @@ import pandas as pd
 from pathlib import Path
 
 mj_per_kg_dm = 11  # MJ ME /kg DM
-monly_ms_prod = {  # kgMS per lactating cow per day # todo check with andrew
+monly_ms_prod = {  # kgMS per lactating cow per day
     1: 57.47,
     2: 49.10,
     3: 50.13,
     4: 45.89,
-    5: 45.42,
-    6: 0,  # todo andrew?
-    7: 55.48,
+    5: 45.42,  # todo questionable andrew looking into
+    6: 0,  # yep
+    7: 0, # not really much lactation in July, so we'll assume 0
     8: 56.92,
     9: 64.27,
     10: 68.17,
@@ -104,6 +104,10 @@ monly_ms_prod = {  # kgMS per lactating cow per day # todo check with andrew
 }
 daily_ms_prod = {m: v / month_len[m] for m, v in monly_ms_prod.items()}
 
+
+# todo SET a lactating cow loss per day… death not dryoff…
+# todo SET a replacement cow loss per day
+# todo SET a dry cow loss per day
 
 class SimpleDairyModel(BaseSimpleFarmModel):
     """
@@ -377,7 +381,7 @@ class SimpleDairyModel(BaseSimpleFarmModel):
         """
         assert pd.api.types.is_integer(i_month), f'month must be int, got {type(i_month)}'
 
-        # import feed where below threshold, import ndays worth of feed # todo document for andrew
+        # import feed where below threshold, import ndays worth of feed
         need_feed = current_feed < self.feed_store_trigger
         past_sup_use = self.sup_feed_needed[(i_month - self.ndays_feed_import + 1):i_month + 1].sum(axis=0)
         feed_imported = np.zeros(self.nsims)
