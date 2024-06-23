@@ -77,8 +77,6 @@ The model allows for three different ways to set these values:
 3. user specified.  Alternatively the user can specify the mean values to use for the marginal cost/benefit calculations. This allows the user to create `optimistic` and `pessimistic` farmer scenarios.  This is done with the `set_mean_pg`, `set_mean_sup_cost`, and `set_mean_product_price` methods.
 
 
-
-
 created matt_dumont 
 on: 6/15/24
 """
