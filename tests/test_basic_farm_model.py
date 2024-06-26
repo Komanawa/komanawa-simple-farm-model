@@ -42,7 +42,7 @@ class DummySimpleFarm(BaseSimpleFarmModel):
         assert out.shape == (self.model_shape[1],), f'out must be shape {self.model_shape[1]}, got {out.shape}'
         return out
 
-    def reset_state(self, i_month, ):
+    def reset_state(self, i_month, current_feed, current_money):
         out = np.zeros(self.model_shape[1]) + 2
         assert out.shape == (self.model_shape[1],), f'out must be shape {self.model_shape[1]}, got {out.shape}'
         return out
@@ -70,7 +70,7 @@ class DummySimpleFarm(BaseSimpleFarmModel):
 
 
 def test_basic_farm_model():
-    all_months = list(range(1, 13)) + list(range(1, 13)) + list(range(1, 13))
+    all_months = [(7 - 1 + i) % 12 + 1 for i in range(12)] * 3
 
     farm = DummySimpleFarm(all_months, istate=np.ones(5), pg=all_months, ifeed=np.arange(5) * 200,
                            imoney=np.arange(5) * 200, sup_feed_cost=0.4, product_price=3.5,

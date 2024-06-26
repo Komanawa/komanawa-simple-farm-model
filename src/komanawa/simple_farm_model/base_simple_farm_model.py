@@ -196,6 +196,7 @@ class BaseSimpleFarmModel(object):
         # define model shape
         assert set(all_months).issubset(set(range(1, 13))), f'months must be in range 1-12'
         all_month_org = deepcopy(all_months)
+        assert all_months[0] == self.month_reset, f'first month must be {self.month_reset=}'
         if monthly_input:
             org_month_len = len(all_months)
             self.time_len = np.sum([month_len[m] for m in all_months])
@@ -373,13 +374,12 @@ class BaseSimpleFarmModel(object):
 
             # new year? reset state
             if month == self.month_reset and day == 1:
-                next_state = self.reset_state(i_month)
+                next_state = self.reset_state(i_month, current_feed, current_money)
 
             # allow supplemental actions at end of day, if not reset then just passes current_state/feed/money through
             current_state, current_feed, current_money = self.supplemental_action_last(i_month, month, day,
                                                                                        current_state, current_feed,
                                                                                        current_money)
-
 
             # set key values
             self.model_state[i_month, :] = next_state
@@ -753,7 +753,7 @@ class BaseSimpleFarmModel(object):
         raise NotImplementedError('must be set in a child class')
         return produced_product
 
-    def reset_state(self, i_month, ):
+    def reset_state(self, i_month, current_feed, current_money):
         out = np.zeros(self.model_shape[1])
         assert out.shape == (self.model_shape[1],), f'out must be shape {self.model_shape[1]}, got {out.shape}'
         raise NotImplementedError('must be set in a child class')
@@ -787,7 +787,7 @@ class DummySimpleFarm(BaseSimpleFarmModel):
         assert out.shape == (self.model_shape[1],), f'out must be shape {self.model_shape[1]}, got {out.shape}'
         raise NotImplementedError('must be set in a child class')
 
-    def reset_state(self, i_month, ):
+    def reset_state(self, i_month, current_feed, current_money):
         out = np.zeros(self.model_shape[1])
         assert out.shape == (self.model_shape[1],), f'out must be shape {self.model_shape[1]}, got {out.shape}'
         raise NotImplementedError('must be set in a child class')
