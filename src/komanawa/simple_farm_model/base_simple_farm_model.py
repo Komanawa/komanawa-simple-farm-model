@@ -192,6 +192,35 @@ class BaseSimpleFarmModel(object):
         :param product_price: income price $/kg product float or np.ndarray shape (nsims,) or (mon_len, nsims)
         :param monthly_input: if True, monthly input, if False, daily input (365 days per year)
         """
+        self._update_object_dict()
+        self._set_arrays(
+            all_months=all_months,
+            istate=istate,
+            ifeed=ifeed,
+            imoney=imoney,
+            pg=pg,
+            sup_feed_cost=sup_feed_cost,
+            product_price=product_price,
+            monthly_input=monthly_input,
+        )
+
+        # internal check of shapes
+        for v in self.obj_dict.values():
+            assert getattr(self, v).shape == self.model_shape, (f'bad shape for {v} {getattr(self, v).shape=} '
+                                                                f'must be {self.model_shape=}')
+        # ntime shapes
+        for v in [self.all_months, self.all_days, self.all_year]:
+            assert v.shape == (
+                self.model_shape[0],), f'bad shape for {v} {v.shape=} must be {(self.model_shape[0],)}'
+
+        # check inputs (some should be set by subclass)
+        self._check_class_attributes()
+
+    def _update_object_dict(self):
+        self.obj_dict = self.obj_dict.copy()
+        self.long_name_dict = self.long_name_dict.copy()
+
+    def _set_arrays(self, all_months, istate, ifeed, imoney, pg, sup_feed_cost, product_price, monthly_input):
 
         # define model shape
         assert set(all_months).issubset(set(range(1, 13))), f'months must be in range 1-12'
@@ -217,7 +246,7 @@ class BaseSimpleFarmModel(object):
             all_days[0] = False
             all_days = all_days.cumsum() - (all_days.cumsum().where(~all_days).ffill().fillna(0).astype(int))
             all_days = all_days.values + 1
-        all_year = np.cumsum((all_days == 1) & (all_months == 1))
+        all_year = np.cumsum((all_days == 1) & (all_months == self.month_reset))
         ifeed = np.atleast_1d(ifeed)
         imoney = np.atleast_1d(imoney)
 
@@ -270,22 +299,12 @@ class BaseSimpleFarmModel(object):
         self.all_days = np.concatenate([[0], all_days])
         self.all_year = np.concatenate([[0], all_year])
 
-        # internal check of shapes
-        for v in self.obj_dict.values():
-            assert getattr(self, v).shape == self.model_shape, (f'bad shape for {v} {getattr(self, v).shape=} '
-                                                                f'must be {self.model_shape=}')
-        # ntime shapes
-        for v in [self.all_months, self.all_days, self.all_year]:
-            assert v.shape == (
-                self.model_shape[0],), f'bad shape for {v} {v.shape=} must be {(self.model_shape[0],)}'
-
-        # check inputs (some should be set by subclass)
-        self._check_class_attributes()
-
-    def run_model(self, raise_on_rerun=True, rerun=False):
+    def run_model(self, raise_on_rerun=True, rerun=False, printi=False):
         """
         run the model see docstring for process
         :param raise_on_rerun: if True, raise an error if the model has already been run, if False, just return (don't rerun the model)
+        :param rerun: if True, rerun the model even if it has already been run
+        :param printi: if True, print iteration identifier
         :return:
         """
         if self._run and not rerun:
@@ -295,6 +314,8 @@ class BaseSimpleFarmModel(object):
                 return
 
         for i_month in range(1, self.time_len + 1):
+            if printi:
+                print(f'running timestep: {i_month=}/{self.time_len}')
             month = self.all_months[i_month]
             day = self.all_days[i_month]
 
@@ -623,9 +644,10 @@ class BaseSimpleFarmModel(object):
         base_xtime = None
         if x == 'time':
             xlabel = 'time'
+            use_year = np.cumsum((self.all_days == 1) & (self.all_months == 1))
             base_xtime = np.array([datetime.date(
                 year=start_year + yr, month=m, day=d
-            ) for yr, m, d in zip(self.all_year[1:], self.all_months[1:], self.all_days[1:])])
+            ) for yr, m, d in zip(use_year[1:], self.all_months[1:], self.all_days[1:])])
             base_xtime = np.concatenate([[base_xtime[0] - datetime.timedelta(days=1)], base_xtime])
         else:
             xlabel = self.long_name_dict[x]

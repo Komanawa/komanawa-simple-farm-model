@@ -183,8 +183,8 @@ class SimpleDairyModel(BaseSimpleFarmModel):
     homegrown_store_efficiency = 1
     homegrown_storage_cost = 175 / 1000 / mj_per_kg_dm  # 175/ton/DM --> convert to ME, MJ
     one_a_daymilk_production_fraction = 1 - 0.13  # 13% less milk production on 1-a-day
-    _start_lactating_cow_fraction = 1  # 100% of cows are lactating on day 1 #
-    _start_dry_cow_fraction = 0  # 0% of cows are dry on day 1
+    _start_lactating_cow_fraction = 0  # % of cows are lactating on day 1  (july)#
+    _start_dry_cow_fraction = 1  # 100% of cows are dry on day 1 (july)
     _start_replacement_fraction = None  # set internally to replacement rate
     replacement_rate = 0.22  # 22% of cows are replacements
     peak_lact_cow_per_ha = 3.48  # peak lactating cow per ha.
@@ -214,12 +214,13 @@ class SimpleDairyModel(BaseSimpleFarmModel):
         """
         assert self.replacement_cow_loss == 0, 'replacement cow loss must be 0 as we are not simulating replacement cow loss'
         assert self.lactating_cow_loss == self.dry_cow_loss, 'lactating and dry cow loss must be the same'
-
+        self._start_dry_cow_fraction = self._start_dry_cow_fraction + self.lactating_cow_loss / 12
+        self._start_replacement_fraction = self.replacement_rate
         # set expected minimum of dry/lactating cow fraction
         self.min_cow = {  # the maximum cull level for each month
-            5: 1 + self.dry_cow_loss / 12 * 3,
-            6: 1 + self.dry_cow_loss / 12 * 2,
-            7: 1 + self.dry_cow_loss / 12,
+            5: 1 + self.dry_cow_loss / 12 * 2,
+            6: 1 + self.dry_cow_loss / 12 * 1,
+            7: 1,
             8: 1 - self.replacement_rate + self.dry_cow_loss / 12 * 12,
             9: 1 - self.replacement_rate + self.dry_cow_loss / 12 * 11,
             10: 1 - self.replacement_rate + self.dry_cow_loss / 12 * 10,
@@ -245,10 +246,33 @@ class SimpleDairyModel(BaseSimpleFarmModel):
             3: 1,
             4: 1,
         }
-
-        self._start_replacement_fraction = self.replacement_rate
         # add more input/outputs
-        self.obj_dict = self.obj_dict.copy()
+
+        super().__init__(all_months=all_months, istate=istate, pg=pg,
+                         ifeed=ifeed, imoney=imoney, sup_feed_cost=sup_feed_cost, product_price=product_price,
+                         monthly_input=monthly_input)
+
+        # call reset state to pull the initial annual feed import.
+        self.reset_state(1, self.model_feed[0], self.model_money[0])
+
+        # identify which states are 1 a day milking
+        self.milk_1_aday_states = [i for i, a_day_2 in self.states.items() if not a_day_2]
+
+        self.set_mean_pg(pg_dict=None, pg_raw=self.pg, months=self.all_months)
+        self.set_mean_sup_cost(sup_dict=None, sup_cost_raw=self.sup_feed_cost, months=self.all_months)
+        self.set_mean_product_price(prod_price_dict=None, prod_price_raw=self.product_price, months=self.all_months)
+
+        # set feed store trigger to 2 weeks of fully lactating feed requirements, with 2 * replacements
+        start_cows = self._start_lactating_cow_fraction + self._start_dry_cow_fraction
+        max_lact_feed = max(self.feed_per_cow_lactating.values())
+        max_rep_feed = max(self.feed_per_cow_replacement.values())
+        self.feed_store_trigger = (
+                (self.peak_lact_cow_per_ha * max_lact_feed * start_cows
+                 + self.peak_lact_cow_per_ha * max_rep_feed * self._start_replacement_fraction * 2)
+                * 14)
+
+    def _update_object_dict(self):
+        super()._update_object_dict()
         self.obj_dict['lactating_cow_fraction'] = 'out_lactating_cow_fraction'
         self.obj_dict['dry_cow_fraction'] = 'out_dry_cow_fraction'
         self.obj_dict['replacement_fraction'] = 'out_replacement_fraction'
@@ -262,7 +286,6 @@ class SimpleDairyModel(BaseSimpleFarmModel):
         self.obj_dict['out_cur_fut_feed_def'] = 'out_cur_fut_feed_def'
         self.obj_dict['marginal_benefit'] = 'out_marginal_benefit'
 
-        self.long_name_dict = self.long_name_dict.copy()
         self.long_name_dict['lactating_cow_fraction'] = 'Lactating Cow Fraction (fraction, 0-1)'
         self.long_name_dict['dry_cow_fraction'] = 'Dry Cow Fraction (fraction, 0-1)'
         self.long_name_dict['replacement_fraction'] = 'Replacement Cow Fraction (fraction, 0-1)'
@@ -276,15 +299,8 @@ class SimpleDairyModel(BaseSimpleFarmModel):
         self.long_name_dict['out_cur_fut_feed_def'] = 'Current Future Feed Deficit for MC/MB (MJ)'
         self.long_name_dict['marginal_benefit'] = 'Marginal Benefit for MC/MB ($)'
 
-        super().__init__(all_months=all_months, istate=istate, pg=pg,
-                         ifeed=ifeed, imoney=imoney, sup_feed_cost=sup_feed_cost, product_price=product_price,
-                         monthly_input=monthly_input)
-
-        # call reset state to pull the initial annual feed import.
-        self.reset_state(1, self.model_feed[0], self.model_money[0])
-
-        # identify which states are 1 a day milking
-        self.milk_1_aday_states = [i for i, a_day_2 in self.states.items() if not a_day_2]
+    def _set_arrays(self, all_months, istate, ifeed, imoney, pg, sup_feed_cost, product_price, monthly_input):
+        super()._set_arrays(all_months, istate, ifeed, imoney, pg, sup_feed_cost, product_price, monthly_input)
 
         # make cow buckets...
         self.lactating_cow_fraction = np.zeros(self.nsims) + self._start_lactating_cow_fraction
@@ -308,19 +324,6 @@ class SimpleDairyModel(BaseSimpleFarmModel):
         self.out_cur_fut_feed_def = np.zeros(self.model_shape) * np.nan
         self.out_marginal_benefit = np.zeros(self.model_shape) * np.nan
 
-        self.set_mean_pg(pg_dict=None, pg_raw=self.pg, months=all_months)
-        self.set_mean_sup_cost(sup_dict=None, sup_cost_raw=self.sup_feedout_cost, months=all_months)
-        self.set_mean_product_price(prod_price_dict=None, prod_price_raw=self.product_price, months=all_months)
-
-        # set feed store trigger to 2 weeks of fully lactating feed requirements
-        self.feed_store_trigger = (
-                (self.peak_lact_cow_per_ha * max(
-                    self.feed_per_cow_lactating.values()) * self._start_lactating_cow_fraction
-                 + self.peak_lact_cow_per_ha * max(self.feed_per_cow_dry.values()) * self._start_dry_cow_fraction
-                 + self.peak_lact_cow_per_ha * max(
-                            self.feed_per_cow_replacement.values()) * self._start_replacement_fraction * 2)
-                * 14)
-
     def set_mean_product_price(self, prod_price_dict, prod_price_raw=None, months=None):
         """
         This method can be used to set a bespoke mean pasture growth for each month to calculate marginal cost/benefit by default this is called on self.prod_price in the init method
@@ -335,9 +338,6 @@ class SimpleDairyModel(BaseSimpleFarmModel):
         assert (prod_price_dict is None and (prod_price_raw is not None and months is not None)
                 or (prod_price_dict is not None and prod_price_raw is None and months is None)), (
             'prod_price_dict or prod_price_raw and months must be set')
-        assert isinstance(prod_price_dict, dict), f'prod_price must be dict, got {type(prod_price_dict)}'
-        assert set(prod_price_dict.keys()) == set(
-            range(1, 13)), f'prod_price keys must be 1-12, got {prod_price_dict.keys()}'
 
         if prod_price_dict is not None:
             for k, v in prod_price_dict.items():
@@ -350,11 +350,15 @@ class SimpleDairyModel(BaseSimpleFarmModel):
         else:
             assert isinstance(prod_price_raw, np.ndarray) and isinstance(months, np.ndarray)
             assert prod_price_raw.shape == self.model_shape, f'prod_price_raw must be shape {self.model_shape}, got {prod_price_raw.shape}'
-            assert months.shape == (self.nsims,), f'months must be shape {self.nsims=}, got {months.shape}'
+            assert months.shape == (
+                self.model_shape[0],), f'months must be shape {self.model_shape[:1]=}, got {months.shape}'
             prod_price_dict = {}
             for m in range(1, 13):
                 idx = months == m
                 prod_price_dict[m] = prod_price_raw[idx].mean(axis=0)
+        assert isinstance(prod_price_dict, dict), f'prod_price must be dict, got {type(prod_price_dict)}'
+        assert set(prod_price_dict.keys()) == set(
+            range(1, 13)), f'prod_price keys must be 1-12, got {prod_price_dict.keys()}'
         self.mean_prod_price = prod_price_dict
 
     def set_mean_pg(self, pg_dict, pg_raw=None, months=None):
@@ -371,8 +375,6 @@ class SimpleDairyModel(BaseSimpleFarmModel):
         assert (pg_dict is None and (pg_raw is not None and months is not None)
                 or (pg_dict is not None and pg_raw is None and months is None)), (
             'pg_dict or pg_raw and months must be set')
-        assert isinstance(pg_dict, dict), f'pg must be dict, got {type(pg_dict)}'
-        assert set(pg_dict.keys()) == set(range(1, 13)), f'pg keys must be 1-12, got {pg_dict.keys()}'
 
         if pg_dict is not None:
             for k, v in pg_dict.items():
@@ -385,11 +387,15 @@ class SimpleDairyModel(BaseSimpleFarmModel):
         else:
             assert isinstance(pg_raw, np.ndarray) and isinstance(months, np.ndarray)
             assert pg_raw.shape == self.model_shape, f'pg_raw must be shape {self.model_shape}, got {pg_raw.shape}'
-            assert months.shape == (self.nsims,), f'months must be shape {self.nsims=}, got {months.shape}'
+            assert months.shape == (
+                self.model_shape[0],), f'months must be shape {self.model_shape[:1]=}, got {months.shape}'
             pg_dict = {}
             for m in range(1, 13):
                 idx = months == m
                 pg_dict[m] = pg_raw[idx].mean(axis=0)
+
+        assert isinstance(pg_dict, dict), f'pg must be dict, got {type(pg_dict)}'
+        assert set(pg_dict.keys()) == set(range(1, 13)), f'pg keys must be 1-12, got {pg_dict.keys()}'
         self.mean_pg = pg_dict
 
     def set_mean_sup_cost(self, sup_dict, sup_cost_raw=None, months=None):
@@ -418,7 +424,8 @@ class SimpleDairyModel(BaseSimpleFarmModel):
         else:
             assert isinstance(sup_cost_raw, np.ndarray) and isinstance(months, np.ndarray)
             assert sup_cost_raw.shape == self.model_shape, f'sup_cost_raw must be shape {self.model_shape}, got {sup_cost_raw.shape}'
-            assert months.shape == (self.nsims,), f'months must be shape {self.nsims=}, got {months.shape}'
+            assert months.shape == (
+                self.model_shape[0],), f'months must be shape {self.model_shape[:1]=}, got {months.shape}'
             sup_dict = {}
             for m in range(1, 13):
                 idx = months == m
@@ -429,9 +436,6 @@ class SimpleDairyModel(BaseSimpleFarmModel):
 
     def convert_pg_to_me(self, pg, current_state):
         assert isinstance(pg, np.ndarray), f'pg must be np.ndarray, got {type(pg)}'
-        assert isinstance(current_state, np.ndarray), f'current_state must be np.ndarray, got {type(current_state)}'
-        assert current_state.shape == (
-            self.model_shape[1],), f'current_state must be shape {self.model_shape[1]}, got {current_state.shape}'
         return mj_per_kg_dm * pg
 
     def calculate_feed_needed(self, i_month, month, current_state):
@@ -505,7 +509,7 @@ class SimpleDairyModel(BaseSimpleFarmModel):
         sup_feed_cost = feed_imported * self.sup_feed_cost[i_month]
         new_state = np.zeros(self.nsims) + current_state
 
-        if self.all_days[i_month] in self.state_change_days and month not in [5, 6, 7]:
+        if (self.all_days[i_month] in self.state_change_days) and (month not in [5, 6, 7]):
             # allow state change
             (marginal_cost, marginal_benefit, next_action, alt_lact_fraction,
              alt_dry_fraction) = self.calc_marginal_cost_benefit(i_month, month, current_state, current_feed)
@@ -544,8 +548,8 @@ class SimpleDairyModel(BaseSimpleFarmModel):
                 f'August, September, October, November. Got {self.replacement_fraction}')
         else:
             assert (self.replacement_fraction == self.replacement_rate * 2).all(), (
-                f'replacement fraction must be {2 * self.replacement_rate=} in May, June, July, '
-                f'August, September, October, November. Got {self.replacement_fraction}')
+                f'replacement fraction must be {2 * self.replacement_rate=} in Dec, Jan, Feb, March, April. '
+                f'Got {self.replacement_fraction}')
 
         assert (self.lactating_cow_fraction + self.dry_cow_fraction <= self.max_cow[month]).all(), (
             f'total cows must be <= 1, got {self.lactating_cow_fraction + self.dry_cow_fraction}')
@@ -569,7 +573,7 @@ class SimpleDairyModel(BaseSimpleFarmModel):
 
         if month == 7 and day == month_len[7]:
             self.lactating_cow_fraction = self.dry_cow_fraction
-            self.dry_cow_fraction = 0
+            self.dry_cow_fraction = np.zeros(self.nsims)
 
         # add new replacements at end of November
         if month == 11 and day == month_len[11]:
@@ -577,9 +581,9 @@ class SimpleDairyModel(BaseSimpleFarmModel):
 
         # dryoff and cull cows to replacement rate at end of April
         if month == 4 and day == month_len[4]:
-            self.replacement_fraction = self.replacement_rate
-            self.dry_cow_fraction = self.max_cow[5]
-            self.lactating_cow_fraction = 0
+            self.replacement_fraction = np.zeros(self.nsims) + self.replacement_rate
+            self.dry_cow_fraction = np.zeros(self.nsims) + self.max_cow[5]
+            self.lactating_cow_fraction = np.zeros(self.nsims)
 
         return current_state, current_feed, current_money
 
@@ -593,7 +597,11 @@ class SimpleDairyModel(BaseSimpleFarmModel):
         :return:
         """
         current_year = self.all_year[i_month]
-        stop_idx = np.argmax(self.all_year == current_year + 1)
+        temp = self.all_year == current_year+1
+        if temp.any():
+            stop_idx = np.argmax(temp)
+        else:
+            stop_idx = len(self.all_year)
         remaining_months = self.all_months[i_month:stop_idx]
 
         use_product_price, use_feed_cost, use_pg = self._calc_expected_pg_feed_prod_price(i_month, stop_idx,
@@ -843,7 +851,7 @@ class SimpleDairyModel(BaseSimpleFarmModel):
         assert use_feed_cost.shape == (len(remaining_months), 1)
 
         def cull_prod(ncull):
-            rm_dry = np.max(dry_cow, ncull)
+            rm_dry = np.min(np.concatenate((dry_cow, ncull)))
             new_dry_fract = dry_cow - rm_dry
             new_lact_fract = lactating_cow - (ncull - rm_dry)
             future_product, supplement_cost, deficit_feed = self._calc_cost_production(
@@ -860,8 +868,10 @@ class SimpleDairyModel(BaseSimpleFarmModel):
             return (future_product[0] - supplement_cost[0]) * -1
 
         res = minimize_scalar(cull_prod, bounds=(0, max_cull))
+
         cull = res.x
-        rm_dry = np.max(dry_cow, cull)
+        assert res.success, f'optimisation failed {res.message}'
+        rm_dry = np.min(np.concatenate((dry_cow, [cull])))
         new_dry_fract = dry_cow - rm_dry
         new_lact_fract = lactating_cow - (cull - rm_dry)
         return new_lact_fract[0], new_dry_fract[0]
@@ -909,6 +919,7 @@ class SimpleDairyModel(BaseSimpleFarmModel):
 
     def _calc_cost_production(self, remaining_months, lact_fraction, dry_fraction, once_aday_idx, use_prod_price,
                               use_pg, current_state, current_feed, use_feed_cost, nsims):
+        assert len(remaining_months) > 0, 'remaining_months must be > 0'
         future_lactating_cow_fraction = np.zeros((len(remaining_months), nsims))
         future_dry_cow_fraction = np.zeros((len(remaining_months), nsims))
         future_replacement_fraction = np.zeros((len(remaining_months), nsims))
