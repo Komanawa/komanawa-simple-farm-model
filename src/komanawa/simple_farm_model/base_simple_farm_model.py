@@ -116,13 +116,14 @@ class BaseSimpleFarmModel(object):
         'prod': 'product produced (kg/ha)',
         'prod_money': 'profit from product (NZD)',
         'feed_imported': 'supplemental feed imported (MJ/ha)',
+        'cum_feed_import': 'annual cumulative feed imported (MJ/ha)',
         'feed_cost': 'cost of feed imported (NZD)',
         'pg': 'pasture growth (kgDM/ha)',
         'product_price': 'product price (NZD/kg)',
         'feed_price': 'cost of feed imported (NZD)',
-        'surplus_homegrown': 'surplus homegrown feed for the time step (MJ/ha)',
-        'sup_feed_needed': 'supplemental feed needed for the time step (MJ/ha)',
-        'home_growth_me': 'homegrown feed (pasture growth) converted to ME for the time step (MJ/ha)',
+        'surplus_homegrown': 'surplus homegrown feed (MJ/ha)',
+        'sup_feed_needed': 'supplemental feed needed (MJ/ha)',
+        'home_growth_me': 'pasture growth converted to ME (MJ/ha)',
 
     }
     # create dictionary of attribute name to object name
@@ -141,6 +142,7 @@ class BaseSimpleFarmModel(object):
         'surplus_homegrown': 'surplus_homegrown',
         'sup_feed_needed': 'sup_feed_needed',
         'home_growth_me': 'home_growth_me',
+        'cum_feed_import': 'cum_feed_import',
     }
 
     required_class_attrs = (
@@ -290,6 +292,7 @@ class BaseSimpleFarmModel(object):
         self.surplus_homegrown = np.full(self.model_shape, np.nan)
         self.sup_feed_needed = np.full(self.model_shape, np.nan)
         self.home_growth_me = np.full(self.model_shape, np.nan)
+        self.cum_feed_import = np.full(self.model_shape, np.nan)
 
         # set initial values
         self.model_state[0, :] = istate
@@ -396,6 +399,14 @@ class BaseSimpleFarmModel(object):
             # new year? reset state
             if month == self.month_reset and day == 1:
                 next_state = self.reset_state(i_month, current_feed, current_money)
+                if i_month == 1:
+                    self.cum_feed_import[i_month, :] = self.cum_feed_import[i_month - 1, :] + self.model_feed_imported[
+                                                                                              i_month, :]
+                else:
+                    self.cum_feed_import[i_month, :] = self.model_feed_imported[i_month, :]
+            else:
+                self.cum_feed_import[i_month, :] = self.cum_feed_import[i_month - 1, :] + self.model_feed_imported[
+                                                                                          i_month, :]
 
             # allow supplemental actions at end of day, if not reset then just passes current_state/feed/money through
             current_state, current_feed, current_money = self.supplemental_action_last(i_month, month, day,
@@ -593,7 +604,7 @@ class BaseSimpleFarmModel(object):
             outdata.to_csv(outdir.joinpath(f'sim_{sim}.csv'), index=False)
 
     def plot_results(self, *ys, x='time', sims=None, mult_as_lines=True, twin_axs=False, figsize=(10, 8),
-                     start_year=2000, bins=20):
+                     start_year=2000, bins=20, **kwargs):
         """
         plot results
 
@@ -617,8 +628,12 @@ class BaseSimpleFarmModel(object):
         :param twin_axs: bool if True, plot each y on twin axis, if False, plot on subplots
         :param start_year: the year to start plotting from (default 2000) only affects the transition from year 1, year2, etc. to datetime
         :param bins: number of bins for mult_as_lines=False and x!='time'
+        :param kwargs: passed to plt.plot if and only if mult_as_lines=True
         :return:
         """
+        if not mult_as_lines:
+            assert len(kwargs) == 0, f'kwargs only used when mult_as_lines=True, got {kwargs=}'
+
         ys = np.atleast_1d(ys)
         assert set(ys).issubset(self.long_name_dict.keys()), (
             f'ys must be one or more of: {self.long_name_dict.keys()}, got'
@@ -686,7 +701,7 @@ class BaseSimpleFarmModel(object):
                         label = f'sim: {sim}, {y}'
                     else:
                         label = f'sim {sim}'
-                    ax.plot(use_x[idx], getattr(self, self.obj_dict[y])[:, sim][idx], label=label, ls=ls, c=c)
+                    ax.plot(use_x[idx], getattr(self, self.obj_dict[y])[:, sim][idx], label=label, ls=ls, c=c, **kwargs)
             else:
                 usey = getattr(self, self.obj_dict[y])[:, sims]
                 if x == 'time':

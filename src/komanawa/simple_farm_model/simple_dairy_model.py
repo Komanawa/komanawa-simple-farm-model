@@ -172,7 +172,7 @@ class SimpleDairyModel(BaseSimpleFarmModel):
     }
     mean_sup_cost = None  # set internally
     mean_pg = None  # set internally
-    annual_supplement_import = 0.14  # 13% of total feed required per year (less any stored feed)
+    annual_supplement_import = 0.14  # 13% of total feed required per year (less any stored feed) # todo this is causing weird behaviour... perhaps better to simply set to 0
 
     ndays_feed_import = 7  # when needing to import feed, import 7 days worth of feed (from 7 days supplemental needed)
     state_change_days = [1, 15]  # allow for a change in farm state on day 1 and 15 of each month
@@ -186,8 +186,10 @@ class SimpleDairyModel(BaseSimpleFarmModel):
     _start_lactating_cow_fraction = 0  # % of cows are lactating on day 1  (july)#
     _start_dry_cow_fraction = 1  # 100% of cows are dry on day 1 (july)
     _start_replacement_fraction = None  # set internally to replacement rate
-    replacement_rate = 0.22  # 22% of cows are replacements
-    peak_lact_cow_per_ha = 3.48  # peak lactating cow per ha.
+    replacement_rate = 0.22  # 22% of cows are replacements # todo seeing how this responds
+    # todo andrew's number... peak_lact_cow_per_ha = 3.48  # peak lactating cow per ha., seems too high
+    peak_lact_cow_per_ha = 2.4  # peak lactating cow per ha.  # todo andrew's number / 1.44, this looks better..., but still goes straight to 1 a day
+
     kgms_per_lac_cow = deepcopy(daily_ms_prod)  # kgMS per lactating cow per day
     feed_per_cow_lactating = deepcopy(lactating_feed)
     feed_per_cow_dry = deepcopy(dry_cow_feed)
@@ -208,7 +210,7 @@ class SimpleDairyModel(BaseSimpleFarmModel):
         :param pg: pasture growth kgDM/ha/day np.ndarray shape (mon_len,) or (mon_len, nsims)
         :param ifeed: initial feed number float or np.ndarray shape (nsims,)
         :param imoney: initial money number float or np.ndarray shape (nsims,)
-        :param sup_feed_cost: cost of supplementary feed $/kgDM float or np.ndarray shape (nsims,) or (mon_len, nsims)
+        :param sup_feed_cost: cost of supplementary feed $/MJ float or np.ndarray shape (nsims,) or (mon_len, nsims)
         :param product_price: income price $/kg product float or np.ndarray shape (nsims,) or (mon_len, nsims)
         :param monthly_input: if True, monthly input, if False, daily input (365 days per year)
         """
@@ -266,10 +268,13 @@ class SimpleDairyModel(BaseSimpleFarmModel):
         start_cows = self._start_lactating_cow_fraction + self._start_dry_cow_fraction
         max_lact_feed = max(self.feed_per_cow_lactating.values())
         max_rep_feed = max(self.feed_per_cow_replacement.values())
-        self.feed_store_trigger = (
-                (self.peak_lact_cow_per_ha * max_lact_feed * start_cows
-                 + self.peak_lact_cow_per_ha * max_rep_feed * self._start_replacement_fraction * 2)
-                * 14)
+
+        # todo this sets a really high trigger, relative to the import
+        # self.feed_store_trigger = (
+        #        (self.peak_lact_cow_per_ha * max_lact_feed * start_cows
+        #         + self.peak_lact_cow_per_ha * max_rep_feed * self._start_replacement_fraction * 2)
+        #        * 14)
+        self.feed_store_trigger = 1000  # todo this is a temporary fix, need to set this properly
 
     def _update_object_dict(self):
         super()._update_object_dict()
@@ -279,11 +284,11 @@ class SimpleDairyModel(BaseSimpleFarmModel):
         self.obj_dict['feed_lactating'] = 'out_feed_lactating'
         self.obj_dict['feed_dry'] = 'out_feed_dry'
         self.obj_dict['feed_replacement'] = 'out_feed_replacement'
-        self.obj_dict['out_cur_fut_prod'] = 'out_cur_fut_prod'
-        self.obj_dict['out_alt_fut_prod'] = 'out_alt_fut_prod'
-        self.obj_dict['out_marginal_cost'] = 'out_marginal_cost'
-        self.obj_dict['out_alt_fut_feed_def'] = 'out_alt_fut_feed_def'
-        self.obj_dict['out_cur_fut_feed_def'] = 'out_cur_fut_feed_def'
+        self.obj_dict['cur_fut_prod'] = 'out_cur_fut_prod'
+        self.obj_dict['alt_fut_prod'] = 'out_alt_fut_prod'
+        self.obj_dict['marginal_cost'] = 'out_marginal_cost'
+        self.obj_dict['alt_fut_feed_def'] = 'out_alt_fut_feed_def'
+        self.obj_dict['cur_fut_feed_def'] = 'out_cur_fut_feed_def'
         self.obj_dict['marginal_benefit'] = 'out_marginal_benefit'
 
         self.long_name_dict['lactating_cow_fraction'] = 'Lactating Cow Fraction (fraction, 0-1)'
@@ -292,11 +297,11 @@ class SimpleDairyModel(BaseSimpleFarmModel):
         self.long_name_dict['feed_lactating'] = 'Feed Lactating required on a given day (MJ)'
         self.long_name_dict['feed_dry'] = 'Feed Dry required on a given day (MJ)'
         self.long_name_dict['feed_replacement'] = 'Feed Replacement required on a given day (MJ)'
-        self.long_name_dict['out_cur_fut_prod'] = 'Current Future Scenario Production for MC/MB ($)'
-        self.long_name_dict['out_alt_fut_prod'] = 'Alternate Future Scenario Production for MC/MB ($)'
-        self.long_name_dict['out_marginal_cost'] = 'Marginal Cost/Benefit for MC/MB ($)'
-        self.long_name_dict['out_alt_fut_feed_def'] = 'Alternate Future Feed Deficit for MC/MB (MJ)'
-        self.long_name_dict['out_cur_fut_feed_def'] = 'Current Future Feed Deficit for MC/MB (MJ)'
+        self.long_name_dict['cur_fut_prod'] = 'Current Future Scenario Production for MC/MB ($)'
+        self.long_name_dict['alt_fut_prod'] = 'Alternate Future Scenario Production for MC/MB ($)'
+        self.long_name_dict['marginal_cost'] = 'Marginal Cost for MC/MB ($)'
+        self.long_name_dict['alt_fut_feed_def'] = 'Alternate Future Feed Deficit for MC/MB (MJ)'
+        self.long_name_dict['cur_fut_feed_def'] = 'Current Future Feed Deficit for MC/MB (MJ)'
         self.long_name_dict['marginal_benefit'] = 'Marginal Benefit for MC/MB ($)'
 
     def _set_arrays(self, all_months, istate, ifeed, imoney, pg, sup_feed_cost, product_price, monthly_input):
@@ -444,14 +449,14 @@ class SimpleDairyModel(BaseSimpleFarmModel):
         assert current_state.shape == (
             self.model_shape[1],), f'current_state must be shape {self.model_shape[1]}, got {current_state.shape}'
         idxs = np.in1d(current_state, self.milk_1_aday_states)
-        feed_lactating = self.feed_per_cow_lactating[month] * self.lactating_cow_fraction
+        feed_lactating = self.feed_per_cow_lactating[month] * self.lactating_cow_fraction * self.peak_lact_cow_per_ha
         feed_lactating[idxs] *= self.feed_fraction_1aday
         self.out_feed_lactating[i_month] = feed_lactating
 
-        feed_dry = self.feed_per_cow_dry[month] * self.dry_cow_fraction
+        feed_dry = self.feed_per_cow_dry[month] * self.dry_cow_fraction * self.peak_lact_cow_per_ha
         self.out_feed_dry[i_month] = feed_dry
 
-        feed_replacement = self.feed_per_cow_replacement[month] * self.replacement_fraction
+        feed_replacement = self.feed_per_cow_replacement[month] * self.replacement_fraction * self.peak_lact_cow_per_ha
         self.out_feed_replacement[i_month] = feed_replacement
 
         return feed_lactating + feed_dry + feed_replacement
@@ -478,10 +483,12 @@ class SimpleDairyModel(BaseSimpleFarmModel):
             use_prod_price=np.zeros(self.nsims),
             use_pg=np.zeros(self.nsims),
             current_state=np.zeros(self.nsims),
-            current_feed=current_feed,
+            current_feed=np.zeros(self.nsims),
             use_feed_cost=np.zeros(self.nsims),
             nsims=self.nsims)
-        import_feed = annual_feed * self.annual_supplement_import
+        import_feed = annual_feed * self.annual_supplement_import - current_feed  # todo this should probably be minus feed needed to sept???
+        import_feed[import_feed < 0] = 0
+        self.model_feed_imported[i_month, :] += import_feed
         current_feed += import_feed
         current_money -= import_feed * self.sup_feed_cost[i_month]
 
@@ -517,7 +524,7 @@ class SimpleDairyModel(BaseSimpleFarmModel):
             self.dry_cow_fraction[idx] = alt_dry_fraction[idx]
             self.lactating_cow_fraction[idx] = alt_lact_fraction[idx]
             new_once_aday = next_action == 3
-            new_state[new_once_aday] = 1
+            new_state[new_once_aday & idx] = 1
 
         return new_state, feed_imported, sup_feed_cost
 
@@ -597,7 +604,7 @@ class SimpleDairyModel(BaseSimpleFarmModel):
         :return:
         """
         current_year = self.all_year[i_month]
-        temp = self.all_year == current_year+1
+        temp = self.all_year == current_year + 1
         if temp.any():
             stop_idx = np.argmax(temp)
         else:
@@ -763,7 +770,7 @@ class SimpleDairyModel(BaseSimpleFarmModel):
             remaining_months=remaining_months,
             lact_fraction=alt_lact_fraction,
             dry_fraction=alt_dry_fraction,
-            once_aday_idx=once_aday_idx,
+            once_aday_idx=once_aday_idx | to_once_aday_idx,
             use_prod_price=use_prod_price,
             use_pg=use_pg,
             current_state=current_state,
@@ -804,11 +811,11 @@ class SimpleDairyModel(BaseSimpleFarmModel):
             once_idx = np.in1d(current_state, self.milk_1_aday_states)
             out[~once_idx] = 3
             cow_nums = self.lactating_cow_fraction + self.dry_cow_fraction
-            cull_idx = (cow_nums > self.min_cow[month]) & once_idx
+            cull_idx = (cow_nums > (self.min_cow[month]*1.01)) & once_idx
             out[cull_idx] = 1
-            dry_idx = (cow_nums <= self.min_cow[month]) & (self.lactating_cow_fraction > 0) & once_idx
+            dry_idx = (cow_nums <= (self.min_cow[month]*1.01)) & (self.lactating_cow_fraction > 0) & once_idx
             out[dry_idx] = 2
-            no_change_idx = (cow_nums <= self.min_cow[month]) & (self.lactating_cow_fraction <= 0) & once_idx
+            no_change_idx = (cow_nums <= (self.min_cow[month]*1.01)) & (self.lactating_cow_fraction <= 0) & once_idx
             out[no_change_idx] = 0
 
         elif month in [3, 4]:
@@ -949,15 +956,16 @@ class SimpleDairyModel(BaseSimpleFarmModel):
         future_product = future_product.sum(axis=0)
 
         # feed requirements
-        feed_needed_lact = np.zeros((len(remaining_months), self.nsims))
-        feed_needed_dry = np.zeros((len(remaining_months), self.nsims))
-        feed_needed_replacement = np.zeros((len(remaining_months), self.nsims))
+        feed_needed_lact = np.zeros((len(remaining_months), nsims))
+        feed_needed_dry = np.zeros((len(remaining_months), nsims))
+        feed_needed_replacement = np.zeros((len(remaining_months), nsims))
         for i, m in enumerate(set(remaining_months)):
             idx = remaining_months == m
             feed_needed_lact[idx] = self.feed_per_cow_lactating[m] * future_lactating_cow_fraction[idx]
             feed_needed_dry[idx] = self.feed_per_cow_dry[m] * future_dry_cow_fraction[idx]
             feed_needed_replacement[idx] = self.feed_per_cow_replacement[m] * future_replacement_fraction[idx]
 
+        feed_needed_lact[:, once_aday_idx] *= self.feed_fraction_1aday
         total_feed_needed = feed_needed_lact + feed_needed_dry + feed_needed_replacement
 
         current_home_production = self.convert_pg_to_me(use_pg, current_state) * self.homegrown_store_efficiency
