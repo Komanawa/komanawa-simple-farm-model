@@ -30,10 +30,15 @@ def test_average_year():
     pg2 = [pg_data[f'eyrewell-store600_pg_m{m:02d}'] / month_len[m] for m in all_months]
     inpg = np.array([pg1, pg2]).transpose()
 
+    ndays = np.array([month_len[m] for m in all_months])
+
     model = SimpleDairyModel(all_months,
-                             istate=[0, 0], pg=inpg, ifeed=[0, 0], imoney=[0, 0],
+                             istate=[0, 0], pg=inpg, ifeed=[0,0], imoney=[0, 0],
                              sup_feed_cost=sup_cost, product_price=product_price, monthly_input=True)
     model.run_model(printi=False)
+    fig, axs = model.plot_results('lactating_cow_fraction', 'dry_cow_fraction', 'replacement_fraction',
+                                  mult_as_lines=True)
+    fig.tight_layout()
     fig, axs = model.plot_results('state', 'feed', 'money')
     fig.tight_layout()
     fig, axs = model.plot_results('cum_feed_import', 'feed')
@@ -43,9 +48,6 @@ def test_average_year():
     fig, axs = model.plot_results('surplus_homegrown', 'sup_feed_needed', )
     fig.tight_layout()
     fig, axs = model.plot_results('marginal_cost', 'marginal_benefit', marker='o')
-    fig.tight_layout()
-    fig, axs = model.plot_results('lactating_cow_fraction', 'dry_cow_fraction', 'replacement_fraction',
-                                  mult_as_lines=True)
     fig.tight_layout()
     plt.show()
 
