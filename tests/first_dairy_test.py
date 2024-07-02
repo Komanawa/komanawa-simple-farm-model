@@ -12,6 +12,10 @@ import pandas as pd
 
 from komanawa.simple_farm_model.simple_dairy_model import SimpleDairyModel, month_len
 
+# todo average cow densities... see andrew's email
+# todo payout that causes problems...
+# todo need to make feed cost a non-linear relationship with feed demand... how to justify this!?, does ryan have this???
+# todo some sort of s-curve relationship with feed demand and feed cost... how to justify
 
 def test_average_year():
     # todo slightly concernted with the milk production feed tie here...
