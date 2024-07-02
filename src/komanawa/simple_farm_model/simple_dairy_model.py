@@ -173,6 +173,7 @@ class SimpleDairyModel(BaseSimpleFarmModel):
     mean_sup_cost = None  # set internally
     mean_pg = None  # set internally
     annual_supplement_import = 0.14  # 13% of total feed required per year (less any stored feed)
+    annual_supplement_import= 0.0  # 0% of total feed required per year (less any stored feed), # todo seeing if this gives more flexibility
 
     ndays_feed_import = 7  # when needing to import feed, import 7 days worth of feed (from 7 days supplemental needed)
     state_change_days = [1, 15]  # allow for a change in farm state on day 1 and 15 of each month
@@ -187,8 +188,7 @@ class SimpleDairyModel(BaseSimpleFarmModel):
     _start_dry_cow_fraction = 1  # 100% of cows are dry on day 1 (july)
     _start_replacement_fraction = None  # set internally to replacement rate
     replacement_rate = 0.22  # 22% of cows are replacements
-    # todo andrew's number... peak_lact_cow_per_ha = 3.48  # peak lactating cow per ha., seems too high
-    peak_lact_cow_per_ha = 2.4  # peak lactating cow per ha.  # todo andrew's number / 1.44, this looks better..., but still goes straight to 1 a day2
+    peak_lact_cow_per_ha = (3.48 + 2.82)/2/1.44  # (dairy platform density + replacement density) / 2 / 1.44
     kgms_per_lac_cow = deepcopy(daily_ms_prod)  # kgMS per lactating cow per day
     feed_per_cow_lactating = deepcopy(lactating_feed)
     feed_per_cow_dry = deepcopy(dry_cow_feed)
@@ -200,7 +200,7 @@ class SimpleDairyModel(BaseSimpleFarmModel):
     lactating_cow_loss = 0.021  # 2.1% loss per year
     replacement_cow_loss = 0  # simplifying assumption, no loss of replacements
     dry_cow_loss = 0.021  # 2.1% loss per year
-    allow_1aday = False  # allow for 1 a day milking  # todo discuss with andrew
+    allow_1aday = False  # allow for 1 a day milking, abandoning... drying off some small percentage of cows also accomplishes the same thing given we don't have any running costs.
 
     def __init__(self, all_months, istate, pg, ifeed, imoney, sup_feed_cost, product_price, monthly_input=True):
         """
@@ -260,7 +260,7 @@ class SimpleDairyModel(BaseSimpleFarmModel):
                          monthly_input=monthly_input)
 
         # call reset state to pull the initial annual feed import.
-        self.reset_state(1, self.model_feed[0], self.model_money[0])
+        self.reset_state(0, self.model_feed[0], self.model_money[0])
 
         # identify which states are 1 a day milking
         self.milk_1_aday_states = [i for i, a_day_2 in self.states.items() if not a_day_2]
@@ -488,7 +488,9 @@ class SimpleDairyModel(BaseSimpleFarmModel):
             nsims=self.nsims)
         import_feed = annual_feed * self.annual_supplement_import - current_feed
         import_feed[import_feed < 0] = 0
-        self.model_feed_imported[i_month, :] += import_feed
+        self.model_feed_imported[i_month, :] = np.nansum(np.concatenate((import_feed[np.newaxis],
+                                                                         self.model_feed_imported[[i_month], :]),
+                                                                        axis=0), axis=0)
         current_feed += import_feed
         current_money -= import_feed * self.sup_feed_cost[i_month]
 
@@ -510,7 +512,7 @@ class SimpleDairyModel(BaseSimpleFarmModel):
 
         # import feed where below threshold, import ndays worth of feed
         need_feed = current_feed < self.feed_store_trigger
-        past_sup_use = self.sup_feed_needed[(i_month - self.ndays_feed_import + 1):i_month + 1].sum(axis=0)
+        past_sup_use = self.sup_feed_needed[max(i_month - self.ndays_feed_import + 1, 1):i_month + 1].sum(axis=0)
         feed_imported = np.zeros(self.nsims)
         feed_imported[need_feed] = past_sup_use[need_feed]
         sup_feed_cost = feed_imported * self.sup_feed_cost[i_month]
@@ -526,6 +528,9 @@ class SimpleDairyModel(BaseSimpleFarmModel):
             new_once_aday = next_action == 3
             new_state[new_once_aday & idx] = 1
 
+        assert not np.isnan(feed_imported).any(), 'feed_imported must not be nan'
+        assert not np.isnan(sup_feed_cost).any(), 'sup_feed_cost must not be nan'
+        assert not np.isnan(new_state).any(), 'new_state must not be nan'
         return new_state, feed_imported, sup_feed_cost
 
     def supplemental_action_last(self, i_month, month, day, current_state, current_feed,

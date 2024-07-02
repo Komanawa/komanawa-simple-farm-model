@@ -398,11 +398,12 @@ class BaseSimpleFarmModel(object):
 
             # new year? reset state
             if month == self.month_reset and day == 1:
-                next_state = self.reset_state(i_month, current_feed, current_money)
-                if i_month == 1:
-                    self.cum_feed_import[i_month, :] = self.cum_feed_import[i_month - 1, :] + self.model_feed_imported[
+                if i_month == 1:  # handle first day.
+                    # keynote if first day of year is reset handle in the init.
+                    self.cum_feed_import[i_month, :] = self.model_feed_imported[i_month - 1, :] + self.model_feed_imported[
                                                                                               i_month, :]
                 else:
+                    next_state = self.reset_state(i_month, current_feed, current_money)
                     self.cum_feed_import[i_month, :] = self.model_feed_imported[i_month, :]
             else:
                 self.cum_feed_import[i_month, :] = self.cum_feed_import[i_month - 1, :] + self.model_feed_imported[
@@ -413,6 +414,9 @@ class BaseSimpleFarmModel(object):
                                                                                        current_state, current_feed,
                                                                                        current_money)
 
+            assert not np.isnan(next_state).any(), 'next_state must not be nan'
+            assert not np.isnan(current_feed).any(), 'current_feed must not be nan'
+            assert not np.isnan(current_money).any(), 'current_money must not be nan'
             # set key values
             self.model_state[i_month, :] = next_state
             self.model_feed[i_month, :] = current_feed
@@ -623,7 +627,13 @@ class BaseSimpleFarmModel(object):
             - 'sup_feed_cost' (supplementary feed cost)
 
         :param x: x axis to plot against 'time' or a ys variable
-        :param sims: sim numbers to plot
+        :param sims: sim numbers to plot:
+
+            * None: plot all sims
+            * int: plot a single sim
+            * iterable of ints: plot multiple sims
+            * dictionary with int keys and str values: plot key sims with value labels
+
         :param mult_as_lines: bool if True, plot multiple sims as lines, if False, plot multiple sims boxplot style pdf
         :param twin_axs: bool if True, plot each y on twin axis, if False, plot on subplots
         :param start_year: the year to start plotting from (default 2000) only affects the transition from year 1, year2, etc. to datetime
@@ -644,11 +654,18 @@ class BaseSimpleFarmModel(object):
         if twin_axs and len(ys) > 2:
             raise NotImplementedError('twin_axs only implemented for 1 or 2 ys, it gets super messy otherwise')
 
+        sim_labels = None
         if sims is None:
-            sims = range(self.nsims)
-
-        sims = np.atleast_1d(sims)
+            sims = np.arange(self.nsims)
+        elif isinstance(sims, dict):
+            sim_labels = sims
+            sims = np.array(list(sim_labels.keys()))
+        else:
+            sims = np.atleast_1d(sims)
         assert set(sims).issubset(range(self.nsims)), f'sims must be in range({self.nsims}), got {sims}'
+
+        if sim_labels is None:
+            sim_labels = {s: f'sim {s}' for s in sims}
 
         if not mult_as_lines and len(sims) == 1:
             mult_as_lines = True
@@ -697,10 +714,11 @@ class BaseSimpleFarmModel(object):
                     else:
                         use_x = getattr(self, self.obj_dict[x])[:, sim]
                         idx = np.argsort(use_x)
+                    baselab = sim_labels[sim]
                     if twin_axs:
-                        label = f'sim: {sim}, {y}'
+                        label = f'{baselab}, {y}'
                     else:
-                        label = f'sim {sim}'
+                        label = baselab
                     ax.plot(use_x[idx], getattr(self, self.obj_dict[y])[:, sim][idx], label=label, ls=ls, c=c, **kwargs)
             else:
                 usey = getattr(self, self.obj_dict[y])[:, sims]
