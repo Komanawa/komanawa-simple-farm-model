@@ -43,6 +43,8 @@ def test_average_year():
     fig.tight_layout()
     fig, axs = model.plot_results('cum_feed_import', 'feed')
     fig.tight_layout()
+    fig, axs = model.plot_results('cum_feed_import', 'feed_scarcity_cost', 'feed_cost')
+    fig.tight_layout()
     fig, axs = model.plot_results('feed_demand', 'home_growth_me')
     fig.tight_layout()
     fig, axs = model.plot_results('surplus_homegrown', 'sup_feed_needed', )
@@ -146,6 +148,6 @@ def test_historical_data():
 
 
 if __name__ == '__main__':
-    # test_average_year()
+    test_average_year()
     # test_varying_payout()
-    test_varying_sup_cost()
+    # test_varying_sup_cost()
