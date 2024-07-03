@@ -48,10 +48,14 @@ def example_feed_scarcity_cost():
     y = s_curve(x, s=5, a=.85, b=0.33, c=c)
     fig, ax = plt.subplots(figsize=(10, 10))
     ax.plot(x, y)
-    ax.axvline(14, ls='--', color='r')
-    ax.axvline(28, ls='--', color='r')
+    ax.axvline(14, ls='--', color='b', label='"typical" feed import')
+    ax.axvline(28, ls=':', color='b', label='2x "typical" feed import')
     ax.axhline(0, ls='--', color='r')
-    ax.axvline(c, ls='--', color='r')
+    ax.legend()
+    ax.set_xlabel('Feed import (% of annual full production demand)')
+    ax.set_ylabel('Additional Feed scarcity cost (multiplier of feed cost)')
+    ax.set_title('Feed scarcity cost as a function of feed import')
+    fig.tight_layout()
 
 
 if __name__ == '__main__':
