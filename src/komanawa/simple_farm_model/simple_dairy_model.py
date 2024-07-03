@@ -261,6 +261,7 @@ class SimpleDairyModel(BaseSimpleFarmModel):
                          monthly_input=monthly_input)
 
         # call reset state to pull the initial annual feed import.
+        self.get_annual_feed()
         self.reset_state(0, self.model_feed[0], self.model_money[0])
 
         # identify which states are 1 a day milking
@@ -305,7 +306,7 @@ class SimpleDairyModel(BaseSimpleFarmModel):
         self.long_name_dict['alt_fut_feed_def'] = 'Alternate Future Feed Deficit for MC/MB (MJ)'
         self.long_name_dict['cur_fut_feed_def'] = 'Current Future Feed Deficit for MC/MB (MJ)'
         self.long_name_dict['marginal_benefit'] = 'Marginal Benefit for MC/MB ($)'
-        self.long_name_dict['feed_scarcity_cost'] = 'Feed Scarcity Cost ($/MJ)'
+        self.long_name_dict['feed_scarcity_cost'] = 'Feed Scarcity Cost ($)'
 
     def _set_arrays(self, all_months, istate, ifeed, imoney, pg, sup_feed_cost, product_price, monthly_input):
         super()._set_arrays(all_months, istate, ifeed, imoney, pg, sup_feed_cost, product_price, monthly_input)
@@ -333,8 +334,8 @@ class SimpleDairyModel(BaseSimpleFarmModel):
         self.out_marginal_benefit = np.zeros(self.model_shape) * np.nan
         self.feed_scarcity_cost = np.zeros(self.model_shape) * np.nan
 
-    def calc_feed_scarcity_cost(self, start_cum_ann_feed_import, new_feed,
-                                nsims):  # todo implement... more complex version...
+    def calc_feed_scarcity_cost(self, i_month, start_cum_ann_feed_import, new_feed,
+                                nsims):
         """
         Calculate the feed scarcity cost based on the previous cumulative feed import and the new feed import
 
@@ -496,7 +497,7 @@ class SimpleDairyModel(BaseSimpleFarmModel):
         import_feed = annual_feed * self.annual_supplement_import - current_feed
         import_feed[import_feed < 0] = 0
         supplement_cost = import_feed * self.sup_feed_cost[i_month]
-        scarcity_cost = self.calc_feed_scarcity_cost(np.zeros(self.nsims),
+        scarcity_cost = self.calc_feed_scarcity_cost(i_month, np.zeros(self.nsims),
                                                      import_feed[np.newaxis],
                                                      self.nsims)[0]
         self.feed_scarcity_cost[i_month, :] = np.nansum(np.concatenate((
@@ -533,7 +534,7 @@ class SimpleDairyModel(BaseSimpleFarmModel):
         past_sup_use = self.sup_feed_needed[max(i_month - self.ndays_feed_import + 1, 1):i_month + 1].sum(axis=0)
         feed_imported = np.zeros(self.nsims)
         feed_imported[need_feed] = past_sup_use[need_feed]
-        scarcity_cost = self.calc_feed_scarcity_cost(self.cum_feed_import[i_month - 1],
+        scarcity_cost = self.calc_feed_scarcity_cost(i_month, self.cum_feed_import[i_month - 1],
                                                      feed_imported[np.newaxis],
                                                      self.nsims)[0]
         sup_feed_cost = feed_imported * self.sup_feed_cost[i_month] + scarcity_cost
@@ -724,6 +725,7 @@ class SimpleDairyModel(BaseSimpleFarmModel):
 
         current_1day_idxs = np.in1d(current_state, self.milk_1_aday_states)
         future_product, supplement_cost, deficit_feed = self._calc_cost_production(
+            i_month=i_month,
             remaining_months=remaining_months,
             lact_fraction=self.lactating_cow_fraction,
             dry_fraction=self.dry_cow_fraction,
@@ -768,6 +770,7 @@ class SimpleDairyModel(BaseSimpleFarmModel):
         new_cull_lact, new_cull_dry = [], []
         for i in np.where(cull_idx)[0]:
             tlact, tdry = self._cull_optimisation(
+                i_month=i_month,
                 lactating_cow=self.lactating_cow_fraction[[i]], dry_cow=self.dry_cow_fraction[[i]],
                 month=month, remaining_months=remaining_months, once_aday_idx=once_aday_idx[[i]],
                 use_prod_price=use_prod_price[:, [i]], use_pg=use_pg[:, [i]],
@@ -784,6 +787,7 @@ class SimpleDairyModel(BaseSimpleFarmModel):
         new_dryoff_lact, new_dryoff_dry = [], []
         for i in np.where(dryoff_idx)[0]:
             tlact, tdry = self._dryoff_optmisation(
+                i_month=i_month,
                 lactating_cow=self.lactating_cow_fraction[[i]], dry_cow=self.dry_cow_fraction[[i]],
                 remaining_months=remaining_months, once_aday_idx=once_aday_idx[[i]],
                 use_prod_price=use_prod_price[:, [i]], use_pg=use_pg[:, [i]],
@@ -801,6 +805,7 @@ class SimpleDairyModel(BaseSimpleFarmModel):
         assert (alt_dry_fraction >= 0).all()
 
         future_product, supplement_cost, deficit_feed = self._calc_cost_production(
+            i_month=i_month,
             remaining_months=remaining_months,
             lact_fraction=alt_lact_fraction,
             dry_fraction=alt_dry_fraction,
@@ -893,7 +898,7 @@ class SimpleDairyModel(BaseSimpleFarmModel):
         assert out.min() >= 0, f'out must be >= 0, got {out.min()}'
         return out
 
-    def _cull_optimisation(self, lactating_cow, dry_cow, month, remaining_months, once_aday_idx,
+    def _cull_optimisation(self, i_month, lactating_cow, dry_cow, month, remaining_months, once_aday_idx,
                            use_prod_price, use_pg, current_state, current_feed, use_feed_cost, cum_feed):
         """
         how many cows to cull to get to the best option
@@ -919,6 +924,7 @@ class SimpleDairyModel(BaseSimpleFarmModel):
             new_dry_fract = dry_cow - rm_dry
             new_lact_fract = lactating_cow - (ncull - rm_dry)
             future_product, supplement_cost, deficit_feed = self._calc_cost_production(
+                i_month=i_month,
                 remaining_months=remaining_months,
                 lact_fraction=new_lact_fract,
                 dry_fraction=new_dry_fract,
@@ -941,7 +947,7 @@ class SimpleDairyModel(BaseSimpleFarmModel):
         new_lact_fract = lactating_cow - (cull - rm_dry)
         return new_lact_fract[0], new_dry_fract[0]
 
-    def _dryoff_optmisation(self, lactating_cow, dry_cow, remaining_months, once_aday_idx,
+    def _dryoff_optmisation(self, i_month, lactating_cow, dry_cow, remaining_months, once_aday_idx,
                             use_prod_price, use_pg, current_state, current_feed, use_feed_cost,
                             cum_feed):
         """
@@ -967,6 +973,7 @@ class SimpleDairyModel(BaseSimpleFarmModel):
             new_dry_fract = dry_cow + ndry
             new_lact_fract = lactating_cow - ndry
             future_product, supplement_cost, deficit_feed = self._calc_cost_production(
+                i_month=i_month,
                 remaining_months=remaining_months,
                 lact_fraction=new_lact_fract,
                 dry_fraction=new_dry_fract,
@@ -988,7 +995,8 @@ class SimpleDairyModel(BaseSimpleFarmModel):
         new_lact_fract = lactating_cow - dry
         return new_lact_fract[0], new_dry_fract[0]
 
-    def _calc_cost_production(self, remaining_months, lact_fraction, dry_fraction, once_aday_idx, use_prod_price,
+    def _calc_cost_production(self, i_month, remaining_months, lact_fraction, dry_fraction, once_aday_idx,
+                              use_prod_price,
                               use_pg, current_state, current_feed, use_feed_cost, nsims,
                               current_cum_import,
                               inc_scarcity=True):
@@ -1068,7 +1076,7 @@ class SimpleDairyModel(BaseSimpleFarmModel):
         supplement_needed = deficit_feed / self.supplemental_efficiency
 
         if inc_scarcity:
-            scarcity_cost = self.calc_feed_scarcity_cost(current_cum_import, supplement_needed, nsims=nsims)
+            scarcity_cost = self.calc_feed_scarcity_cost(i_month, current_cum_import, supplement_needed, nsims=nsims)
         else:
             scarcity_cost = np.zeros((len(remaining_months), nsims))
 
@@ -1085,7 +1093,8 @@ class SimpleDairyModel(BaseSimpleFarmModel):
         remaining_months = np.concatenate([np.repeat(m, month_len[m])
                                            for m in [(self.month_reset - 1 + i) % 12 + 1 for i in range(12)]])
         future_product, supplement_cost, annual_feed = self._calc_cost_production(
-            remaining_months,
+            i_month=0,
+            remaining_months=remaining_months,
             lact_fraction=np.ones(self.nsims),
             dry_fraction=np.zeros(self.nsims),
             once_aday_idx=np.zeros(self.nsims).astype(bool),
@@ -1096,7 +1105,48 @@ class SimpleDairyModel(BaseSimpleFarmModel):
             use_feed_cost=np.zeros((len(remaining_months), self.nsims)),
             nsims=self.nsims,
             current_cum_import=np.zeros(self.nsims),
-            inc_scarcity=True
+            inc_scarcity=False
         )
         self._annual_feed_needed = annual_feed
         return annual_feed
+
+
+class DairyModelWithScarcity(SimpleDairyModel):
+    """
+    playing with an s-curve scarcity model
+    """
+
+    def calc_feed_scarcity_cost(self, i_month, start_cum_ann_feed_import, new_feed, nsims):
+        """
+        Calculate the feed scarcity cost based on the previous cumulative feed import and the new feed import
+
+        :param start_cum_ann_feed_import: previous cumulative feed import (one per sim)
+        :param new_feed: new feed import (ndays, nsims)
+        :return: feed scarcity cost ($ for the time period) (NOT $/MJ !) np.ndarray shape (ndays, nsims)
+        """
+        assert start_cum_ann_feed_import.shape == new_feed.shape[1:] == (
+            nsims,), f'{start_cum_ann_feed_import.shape=} {new_feed.shape=}'
+
+        start_cum_ann_feed_import = np.nanmax(np.concatenate((start_cum_ann_feed_import[np.newaxis],
+                                                              np.zeros((1, nsims))), axis=0),
+                                              axis=0)
+        cum_feed_per = (start_cum_ann_feed_import + new_feed.cumsum(axis=0)) / self.get_annual_feed() * 100
+        assert cum_feed_per.min() >= 0, f'{cum_feed_per.min()}'
+        assert cum_feed_per.max() <= 100, f'{cum_feed_per.max()}'
+        cost_per_mj = s_curve(cum_feed_per, s=20, a=.85, b=0.33, c=25) * self.sup_feed_cost[
+                                                                        i_month: i_month + new_feed.shape[0]]
+
+        return cost_per_mj * new_feed
+
+
+def s_curve(x, s, a, b, c):
+    """
+    S-curve function
+    :param x: x value
+    :param s: scale - the maximum value of the curve (if s=1, the maximum value is 1)
+    :param a: steepness - smoothing parameter as a increases the curve becomes steeper and the inflection point moves to the right
+    :param b: steepness about the inflection point
+    :param c: inflection point (if a=1, c is the x value at which y=0.5)
+    :return:
+    """
+    return s * (1 / (1 + np.exp(-b * (x - c)))) ** a

@@ -10,11 +10,12 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
-from komanawa.simple_farm_model.simple_dairy_model import SimpleDairyModel, month_len
+from komanawa.simple_farm_model.simple_dairy_model import SimpleDairyModel, month_len, DairyModelWithScarcity
 
 
 # todo need to make feed cost a non-linear relationship with feed demand... how to justify this!?, does ryan have this???
 # todo some sort of s-curve relationship with feed demand and feed cost... how to justify
+#  The test model works really well with scarcity cost.  Just need to justify the s curve...
 
 def test_average_year():
     mj_per_kg_dm = 11  # MJ ME /kg DM
@@ -35,6 +36,45 @@ def test_average_year():
     model = SimpleDairyModel(all_months,
                              istate=[0, 0], pg=inpg, ifeed=[0, 0], imoney=[0, 0],
                              sup_feed_cost=sup_cost, product_price=product_price, monthly_input=True)
+    model.run_model(printi=False)
+    fig, axs = model.plot_results('lactating_cow_fraction', 'dry_cow_fraction', 'replacement_fraction',
+                                  mult_as_lines=True)
+    fig.tight_layout()
+    fig, axs = model.plot_results('state', 'feed', 'money')
+    fig.tight_layout()
+    fig, axs = model.plot_results('cum_feed_import', 'feed')
+    fig.tight_layout()
+    fig, axs = model.plot_results('cum_feed_import', 'feed_scarcity_cost', 'feed_cost')
+    fig.tight_layout()
+    fig, axs = model.plot_results('feed_demand', 'home_growth_me')
+    fig.tight_layout()
+    fig, axs = model.plot_results('surplus_homegrown', 'sup_feed_needed', )
+    fig.tight_layout()
+    fig, axs = model.plot_results('marginal_cost', 'marginal_benefit', marker='o')
+    fig.tight_layout()
+    plt.show()
+
+
+def test_average_year_scarcity():
+    mj_per_kg_dm = 11  # MJ ME /kg DM
+    sup_cost = 406 / 1000 / mj_per_kg_dm
+    product_price = 8.09
+
+    print(f'sup_cost (kgms): {sup_cost * 123.19}, product_price: {product_price}')
+
+    data_path = Path(__file__).parent.joinpath('test_data', 'baseline-mod-median.csv')
+    pg_data = pd.read_csv(data_path, index_col=0)['0']
+    all_months = np.array([(7 - 1 + i) % 12 + 1 for i in range(12)] * 3)
+    pg1 = [pg_data[f'eyrewell-irrigated_pg_m{m:02d}'] / month_len[m] for m in all_months]
+    pg2 = [pg_data[f'eyrewell-store600_pg_m{m:02d}'] / month_len[m] for m in all_months]
+    inpg = np.array([pg1, pg2]).transpose()
+    inpg[np.in1d(all_months, [12, 1, ])] *= 0
+
+    ndays = np.array([month_len[m] for m in all_months])
+
+    model = DairyModelWithScarcity(all_months,
+                                   istate=[0, 0], pg=inpg, ifeed=[0, 0], imoney=[0, 0],
+                                   sup_feed_cost=sup_cost, product_price=product_price, monthly_input=True)
     model.run_model(printi=False)
     fig, axs = model.plot_results('lactating_cow_fraction', 'dry_cow_fraction', 'replacement_fraction',
                                   mult_as_lines=True)
@@ -148,6 +188,7 @@ def test_historical_data():
 
 
 if __name__ == '__main__':
-    test_average_year()
+    test_average_year_scarcity()
+    # test_average_year()
     # test_varying_payout()
     # test_varying_sup_cost()
