@@ -1086,6 +1086,11 @@ class SimpleDairyModel(BaseSimpleFarmModel):
         return future_product, supplement_cost, deficit_feed.sum(axis=0)
 
     def get_annual_feed(self):
+        """
+        get the annual feed needed for each farm
+
+        :return: np.ndarray shape (nsims,)
+        """
 
         if self._annual_feed_needed is not None:
             return self._annual_feed_needed
