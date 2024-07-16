@@ -1113,18 +1113,30 @@ class SimpleDairyModel(BaseSimpleFarmModel):
 
 class DairyModelWithSCScarcity(SimpleDairyModel):
     """
-    a version with an s-curve scarcity model
+    a version with an s-curve scarcity model requiring additional parameters s, a, b, c
     """
     s, a, b, c = None, None, None, None
 
-    def set_scurve_params(self, s, a, b, c):
+    def __init__(self, all_months, istate, pg, ifeed, imoney, sup_feed_cost, product_price, monthly_input=True,
+                 s=None, a=None, b=None, c=None):
         """
-        :param s: scale - the maximum value of the curve (if s=1, the maximum value is 1)
-        :param a: steepness - smoothing parameter as a increases the curve becomes steeper and the inflection point moves to the right
-        :param b: steepness about the inflection point
-        :param c: inflection point (if a=1, c is the x value at which y=0.5)
+
+        :param all_months: integer months, defines mon_len and time_len
+        :param istate: initial state number or np.ndarray shape (nsims,) defines number of simulations
+        :param pg: pasture growth kgDM/ha/day np.ndarray shape (mon_len,) or (mon_len, nsims)
+        :param ifeed: initial feed number float or np.ndarray shape (nsims,)
+        :param imoney: initial money number float or np.ndarray shape (nsims,)
+        :param sup_feed_cost: cost of supplementary feed $/MJ float or np.ndarray shape (nsims,) or (mon_len, nsims)
+        :param product_price: income price $/kg product float or np.ndarray shape (nsims,) or (mon_len, nsims)
+        :param monthly_input: if True, monthly input, if False, daily input (365 days per year)
+        :param s: scarcity scurve scale - the maximum value of the curve (if s=1, the maximum value is 1)
+        :param a: scarcity scurve steepness - smoothing parameter as a increases the curve becomes steeper and the inflection point moves to the right
+        :param b: scarcity scurve steepness about the inflection point
+        :param c: scarcity scurve inflection point (if a=1, c is the x value at which y=0.5)
         """
         self.s, self.a, self.b, self.c = s, a, b, c
+        assert all([e is not None for e in [s, a, b, c]]), 's, a, b, c must not be None'
+        super().__init__(all_months, istate, pg, ifeed, imoney, sup_feed_cost, product_price, monthly_input)
 
     def plot_scurve(self, plt_dnz_fs=False):
         """
@@ -1132,7 +1144,7 @@ class DairyModelWithSCScarcity(SimpleDairyModel):
         :param plt_dnz_fs: bool if true plot the dairy nz farm system boundaries.
         :return:
         """
-        assert all([e is not None for e in [self.s, self.a, self.b, self.c]]), 's, a, b, c must be set'
+
         x = np.linspace(0, 100, 100)
         y = s_curve(x, s=self.s, a=self.a, b=self.b, c=self.c)
         fig, ax = plt.subplots(figsize=(10, 10))
@@ -1161,7 +1173,6 @@ class DairyModelWithSCScarcity(SimpleDairyModel):
         :param new_feed: new feed import (ndays, nsims)
         :return: feed scarcity cost ($ for the time period) (NOT $/MJ !) np.ndarray shape (ndays, nsims)
         """
-        assert all([e is not None for e in [self.s, self.a, self.b, self.c]]), 's, a, b, c must be set'
         assert start_cum_ann_feed_import.shape == new_feed.shape[1:] == (
             nsims,), f'{start_cum_ann_feed_import.shape=} {new_feed.shape=}'
 
