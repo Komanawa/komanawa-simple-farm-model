@@ -123,6 +123,7 @@ import numpy as np
 import pandas as pd
 from scipy.optimize import minimize_scalar
 from copy import deepcopy
+import matplotlib.pyplot as plt
 from pathlib import Path
 
 mj_per_kg_dm = 11  # MJ ME /kg DM
@@ -172,8 +173,7 @@ class SimpleDairyModel(BaseSimpleFarmModel):
     }
     mean_sup_cost = None  # set internally
     mean_pg = None  # set internally
-    annual_supplement_import = 0.14  # 13% of total feed required per year (less any stored feed)
-    annual_supplement_import = 0.0  # 0% of total feed required per year (less any stored feed), # todo seeing if this gives more flexibility, generally yes.
+    annual_supplement_import = 0.0  # 0% of total feed required per year (less any stored feed)
 
     ndays_feed_import = 7  # when needing to import feed, import 7 days worth of feed (from 7 days supplemental needed)
     state_change_days = [1, 15]  # allow for a change in farm state on day 1 and 15 of each month
@@ -1111,10 +1111,47 @@ class SimpleDairyModel(BaseSimpleFarmModel):
         return annual_feed
 
 
-class DairyModelWithScarcity(SimpleDairyModel):
+class DairyModelWithSCScarcity(SimpleDairyModel):
     """
-    playing with an s-curve scarcity model
+    a version with an s-curve scarcity model
     """
+    s, a, b, c = None, None, None, None
+
+    def set_scurve_params(self, s, a, b, c):
+        """
+        :param s: scale - the maximum value of the curve (if s=1, the maximum value is 1)
+        :param a: steepness - smoothing parameter as a increases the curve becomes steeper and the inflection point moves to the right
+        :param b: steepness about the inflection point
+        :param c: inflection point (if a=1, c is the x value at which y=0.5)
+        """
+        self.s, self.a, self.b, self.c = s, a, b, c
+
+    def plot_scurve(self, plt_dnz_fs=False):
+        """
+        plot the s-curve
+        :param plt_dnz_fs: bool if true plot the dairy nz farm system boundaries.
+        :return:
+        """
+        assert all([e is not None for e in [self.s, self.a, self.b, self.c]]), 's, a, b, c must be set'
+        x = np.linspace(0, 100, 100)
+        y = s_curve(x, s=self.s, a=self.a, b=self.b, c=self.c)
+        fig, ax = plt.subplots(figsize=(10, 10))
+        ax.plot(x, y)
+        if plt_dnz_fs:
+            ax.fill_between([1, 10], [0, 0], [1, 1], transform=ax.get_xaxis_transform(), color='r', alpha=0.1,
+                            label='DNZ farm system 2')
+            ax.fill_between([10, 20], [0, 0], [1, 1], transform=ax.get_xaxis_transform(), color='r', alpha=0.2,
+                            label='DNZ farm system 3')
+            ax.fill_between([20, 30], [0, 0], [1, 1], transform=ax.get_xaxis_transform(), color='r', alpha=0.3,
+                            label='DNZ farm system 4')
+            ax.fill_between([30, 100], [0, 0], [1, 1], transform=ax.get_xaxis_transform(), color='r', alpha=0.4,
+                            label='DNZ farm systen 5')
+        ax.legend()
+        ax.set_xlabel('Feed import (% of annual full production demand)')
+        ax.set_ylabel('Additional Feed scarcity cost (multiplier of feed cost)')
+        ax.set_title('Feed scarcity cost as a function of feed import')
+        fig.tight_layout()
+        return fig, ax
 
     def calc_feed_scarcity_cost(self, i_month, start_cum_ann_feed_import, new_feed, nsims):
         """
@@ -1124,6 +1161,7 @@ class DairyModelWithScarcity(SimpleDairyModel):
         :param new_feed: new feed import (ndays, nsims)
         :return: feed scarcity cost ($ for the time period) (NOT $/MJ !) np.ndarray shape (ndays, nsims)
         """
+        assert all([e is not None for e in [self.s, self.a, self.b, self.c]]), 's, a, b, c must be set'
         assert start_cum_ann_feed_import.shape == new_feed.shape[1:] == (
             nsims,), f'{start_cum_ann_feed_import.shape=} {new_feed.shape=}'
 
@@ -1133,8 +1171,9 @@ class DairyModelWithScarcity(SimpleDairyModel):
         cum_feed_per = (start_cum_ann_feed_import + new_feed.cumsum(axis=0)) / self.get_annual_feed() * 100
         assert cum_feed_per.min() >= 0, f'{cum_feed_per.min()}'
         assert cum_feed_per.max() <= 100, f'{cum_feed_per.max()}'
-        cost_per_mj = s_curve(cum_feed_per, s=20, a=.85, b=0.33, c=25) * self.sup_feed_cost[
-                                                                        i_month: i_month + new_feed.shape[0]]
+        cost_per_mj = s_curve(
+            cum_feed_per, s=self.s, a=self.a, b=self.b,
+            c=self.c) * self.sup_feed_cost[i_month: i_month + new_feed.shape[0]]
 
         return cost_per_mj * new_feed
 

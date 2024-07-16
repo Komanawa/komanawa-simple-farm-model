@@ -183,12 +183,28 @@ def test_varying_sup_cost():
     plt.show()
 
 
-def test_historical_data():
+def test_historical_data(): # todo bayesian optimisation for parameters? --> might be the simplest way...
+    from komanawa.slmacc_csra import get_historical_pg_data
+
+    history = get_historical_pg_data('eyrewell', 'irrigated')
+    history['water_year'] = history['year'] + (history['month'] >= 7).astype(int)
+    history = history.groupby(['water_year', 'month']).mean()
+    mj_per_kg_dm = 11  # MJ ME /kg DM
+    sup_cost = 406 / 1000 / mj_per_kg_dm
+    product_price = 8.09
+    all_months = np.array([(7 - 1 + i) % 12 + 1 for i in range(12)])
+    inpg = np.array([history.loc[wy].loc[all_months, 'pg'].values for wy in history.index.levels[0]]).transpose()
+    # todo start here...
+    pass
+
+    # todo pull out the percent of feed import from the historical data
+
     raise NotImplementedError
 
 
 if __name__ == '__main__':
-    test_average_year_scarcity()
+    test_historical_data()
+    # test_average_year_scarcity()
     # test_average_year()
     # test_varying_payout()
     # test_varying_sup_cost()

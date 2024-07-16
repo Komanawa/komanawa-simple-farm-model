@@ -36,7 +36,7 @@ classifiers = [
 ]
 
 [tool.setuptools.dynamic]
-version = { attr = "komanawa.gw_age_tools.version.__version__" }
+version = {attr = "komanawa.simple_farm_model.version.__version__" }
 
 [project.urls]
 Homepage = "https://github.com/Komanawa-Solutions-Ltd/komanawa-simple-farm-model"
