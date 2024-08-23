@@ -12,6 +12,8 @@ The module also includes a helper function get_colors() for generating a list of
 """
 
 import datetime
+from wsgiref.validate import assert_
+
 import numpy as np
 import pandas as pd
 from pathlib import Path
@@ -400,8 +402,9 @@ class BaseSimpleFarmModel(object):
             if month == self.month_reset and day == 1:
                 if i_month == 1:  # handle first day.
                     # keynote if first day of year is reset handle in the init.
-                    self.cum_feed_import[i_month, :] = self.model_feed_imported[i_month - 1, :] + self.model_feed_imported[
-                                                                                              i_month, :]
+                    self.cum_feed_import[i_month, :] = self.model_feed_imported[i_month - 1,
+                                                       :] + self.model_feed_imported[
+                                                            i_month, :]
                 else:
                     next_state = self.reset_state(i_month, current_feed, current_money)
                     self.cum_feed_import[i_month, :] = self.model_feed_imported[i_month, :]
@@ -813,6 +816,37 @@ class BaseSimpleFarmModel(object):
         assert out.shape == (self.model_shape[1],), f'out must be shape {self.model_shape[1]}, got {out.shape}'
         raise NotImplementedError('must be set in a child class')
         return next_state
+
+    def output_eq(self, other, raise_on_diff=False):
+        if type(self) != type(other):
+            if raise_on_diff:
+                raise ValueError(f'must be same type, got {type(self)} and {type(other)}')
+            return False
+        if not self._run and other._run:
+            if raise_on_diff:
+                raise ValueError(f'at least one model not run: {self._run=} {other._run=}')
+            return False
+        if self.model_shape != other.model_shape:
+            if raise_on_diff:
+                raise ValueError(f'model_shape must be the same, got {self.model_shape} and {other.model_shape}')
+            return False
+        different = []
+        missing = []
+        for k, v in self.obj_dict.items():
+            if not hasattr(other, v):
+                missing.append(v)
+                continue
+            if not np.allclose(getattr(self, v), getattr(other, v), equal_nan=True):
+                different.append(v)
+        if len(missing) > 0:
+            if raise_on_diff:
+                raise ValueError(f'missing attributes in other: {missing}')
+            return False
+        if len(different) > 0:
+            if raise_on_diff:
+                raise ValueError(f'different attributes: {different}')
+            return False
+        return True
 
 
 class DummySimpleFarm(BaseSimpleFarmModel):

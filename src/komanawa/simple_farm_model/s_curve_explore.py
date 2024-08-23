@@ -80,7 +80,6 @@ def feed_scarcity_cost_dnz_system3():
 
 if __name__ == '__main__':
     feed_scarcity_cost_dnz_system3()
-    plt.show()
     a_var()
     b_var()
     plt.show()
