@@ -799,6 +799,7 @@ class SimpleDairyModel(BaseSimpleFarmModel):
                                                  num_cores=self.ncore_opt)
 
             # opt_data order iloc, new_lact_fract, new_dry_fract
+            opt_data_cull = np.array(opt_data_cull)
             alt_lact_fraction[opt_data_cull[:, 0].astype(int)] = opt_data_cull[:, 1]
             alt_dry_fraction[opt_data_cull[:, 0].astype(int)] = opt_data_cull[:, 2]
 
@@ -826,7 +827,6 @@ class SimpleDairyModel(BaseSimpleFarmModel):
                                                 logging_level=self.logging_level,
                                                 num_cores=self.ncore_opt)
             opt_data_dry = np.array(opt_data_dry)
-
             alt_lact_fraction[opt_data_dry[:, 0].astype(int)] = opt_data_dry[:, 1]
             alt_dry_fraction[opt_data_dry[:, 0].astype(int)] = opt_data_dry[:, 2]
 
