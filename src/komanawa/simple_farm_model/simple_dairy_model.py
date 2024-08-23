@@ -161,6 +161,8 @@ dry_cow_feed = {k: v * mj_per_kg_dm for k, v in dry_cow_feed.items()}
 replacement_feed = {m: 6.4 * mj_per_kg_dm for m in range(1, 13)}
 lactating_feed = {k: v * 123.19 for k, v in daily_ms_prod.items()}  # assume 123.19 MJ ME/kg DM
 
+default_peak_cow = (3.48 + 2.82) / 2 / 1.44  # (dairy platform density + replacement density) / 2 / 1.44
+
 
 class SimpleDairyModel(BaseSimpleFarmModel):
     """
@@ -189,7 +191,6 @@ class SimpleDairyModel(BaseSimpleFarmModel):
     _start_replacement_fraction = None  # set internally to replacement rate
     _annual_feed_needed = None  # set at first reset
     replacement_rate = 0.22  # 22% of cows are replacements
-    peak_lact_cow_per_ha = (3.48 + 2.82) / 2 / 1.44  # (dairy platform density + replacement density) / 2 / 1.44
     kgms_per_lac_cow = deepcopy(daily_ms_prod)  # kgMS per lactating cow per day
     feed_per_cow_lactating = deepcopy(lactating_feed)
     feed_per_cow_dry = deepcopy(dry_cow_feed)
@@ -203,7 +204,8 @@ class SimpleDairyModel(BaseSimpleFarmModel):
     dry_cow_loss = 0.021  # 2.1% loss per year
     allow_1aday = False  # allow for 1 a day milking, abandoning... drying off some small percentage of cows also accomplishes the same thing given we don't have any running costs.
 
-    def __init__(self, all_months, istate, pg, ifeed, imoney, sup_feed_cost, product_price, monthly_input=True):
+    def __init__(self, all_months, istate, pg, ifeed, imoney, sup_feed_cost, product_price, monthly_input=True,
+                 peak_lact_cow_per_ha=default_peak_cow):
         """
 
         :param all_months: integer months, defines mon_len and time_len
@@ -215,6 +217,7 @@ class SimpleDairyModel(BaseSimpleFarmModel):
         :param product_price: income price $/kg product float or np.ndarray shape (nsims,) or (mon_len, nsims)
         :param monthly_input: if True, monthly input, if False, daily input (365 days per year)
         """
+        self.peak_lact_cow_per_ha = peak_lact_cow_per_ha
         if self.allow_1aday:
             self.calc_next_state_quant = self.calc_next_state_quant_1aday
         else:
