@@ -794,18 +794,13 @@ class SimpleDairyModel(BaseSimpleFarmModel):
             if self.ncore_opt == 1:
                 opt_data_cull = [self._cull_optimisation(**run) for run in cull_runs]
             else:
-                opt_data_cull = run_multiprocess(func=self._cull_opt_mp, runs=cull_runs, logging_level=self.logging_level,
+                opt_data_cull = run_multiprocess(func=self._cull_opt_mp, runs=cull_runs,
+                                                 logging_level=self.logging_level,
                                                  num_cores=self.ncore_opt)
 
             # opt_data order iloc, new_lact_fract, new_dry_fract
-            opt_data_cull = np.array(opt_data_cull)
-            new_cull_lact = np.zeros(len(opt_data_cull))
-            new_cull_dry = np.zeros(len(opt_data_cull))
-            new_cull_lact[opt_data_cull[:, 0].astype(int)] = opt_data_cull[:, 1]
-            new_cull_dry[opt_data_cull[:, 0].astype(int)] = opt_data_cull[:, 2]
-
-            alt_lact_fraction[cull_idx] = new_cull_lact
-            alt_dry_fraction[cull_idx] = new_cull_dry
+            alt_lact_fraction[opt_data_cull[:, 0].astype(int)] = opt_data_cull[:, 1]
+            alt_dry_fraction[opt_data_cull[:, 0].astype(int)] = opt_data_cull[:, 2]
 
         # dryoff cows optimisation
         if dryoff_idx.any():
@@ -831,13 +826,9 @@ class SimpleDairyModel(BaseSimpleFarmModel):
                                                 logging_level=self.logging_level,
                                                 num_cores=self.ncore_opt)
             opt_data_dry = np.array(opt_data_dry)
-            new_dryoff_lact = np.zeros(len(opt_data_dry))
-            new_dryoff_dry = np.zeros(len(opt_data_dry))
-            new_dryoff_lact[opt_data_dry[:, 0].astype(int)] = opt_data_dry[:, 1]
-            new_dryoff_dry[opt_data_dry[:, 0].astype(int)] = opt_data_dry[:, 2]
 
-            alt_lact_fraction[dryoff_idx] = new_dryoff_lact
-            alt_dry_fraction[dryoff_idx] = new_dryoff_dry
+            alt_lact_fraction[opt_data_dry[:, 0].astype(int)] = opt_data_dry[:, 1]
+            alt_dry_fraction[opt_data_dry[:, 0].astype(int)] = opt_data_dry[:, 2]
 
         assert (alt_lact_fraction >= 0).all()
         assert (alt_dry_fraction >= 0).all()
