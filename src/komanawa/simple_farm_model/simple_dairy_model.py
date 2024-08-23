@@ -1126,7 +1126,7 @@ class DairyModelWithSCScarcity(SimpleDairyModel):
     s, a, b, c = None, None, None, None
 
     def __init__(self, all_months, istate, pg, ifeed, imoney, sup_feed_cost, product_price, monthly_input=True,
-                 s=None, a=None, b=None, c=None):
+                 s=None, a=None, b=None, c=None, peak_lact_cow_per_ha=default_peak_cow):
         """
 
         :param all_months: integer months, defines mon_len and time_len
@@ -1144,7 +1144,8 @@ class DairyModelWithSCScarcity(SimpleDairyModel):
         """
         self.s, self.a, self.b, self.c = s, a, b, c
         assert all([e is not None for e in [s, a, b, c]]), 's, a, b, c must not be None'
-        super().__init__(all_months, istate, pg, ifeed, imoney, sup_feed_cost, product_price, monthly_input)
+        super().__init__(all_months, istate, pg, ifeed, imoney, sup_feed_cost, product_price, monthly_input,
+                         peak_lact_cow_per_ha=peak_lact_cow_per_ha)
 
     def plot_scurve(self, plt_dnz_fs=False):
         """
