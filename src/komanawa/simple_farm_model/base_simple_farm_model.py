@@ -12,8 +12,7 @@ The module also includes a helper function get_colors() for generating a list of
 """
 
 import datetime
-from wsgiref.validate import assert_
-
+import json
 import numpy as np
 import pandas as pd
 from pathlib import Path
@@ -183,6 +182,7 @@ class BaseSimpleFarmModel(object):
     sup_feedout_cost = None
     homegrown_store_efficiency = None
     homegrown_storage_cost = None
+    alt_kwargs = None
 
     def __init__(self, all_months, istate, pg, ifeed, imoney, sup_feed_cost, product_price, monthly_input=True):
         """
@@ -542,6 +542,11 @@ class BaseSimpleFarmModel(object):
                 unit_name = self.long_name_dict[pretty_name].split('(')[-1].replace(')', '')
                 ds.variables[pretty_name].setncattr('units', unit_name)
 
+            if self.alt_kwargs is not None:
+                out_alt = {k: getattr(self, k) for k in self.alt_kwargs}
+                alt_kwarg = json.dumps(out_alt)
+                ds.setncattr('alt_kwarg', alt_kwarg)
+
     @classmethod
     def from_input_file(cls, inpath):
         """
@@ -564,10 +569,13 @@ class BaseSimpleFarmModel(object):
             model_feed = np.array(ds.variables['feed'][:])
             model_money = np.array(ds.variables['money'][:])
             sup_feed_cost = np.array(ds.variables['feed_price'][:])
+            alt_kwargs = dict()
+            if cls.alt_kwargs is not None:
+                alt_kwargs = json.loads(ds.getncattr('alt_kwarg'))
 
             out = cls(all_months=all_months[1:], istate=model_state[0], pg=pg[1:],
                       ifeed=model_feed[0], imoney=model_money[0], sup_feed_cost=sup_feed_cost[1:],
-                      product_price=product_price[1:], monthly_input=False)
+                      product_price=product_price[1:], monthly_input=False, **alt_kwargs)
 
             for k, v in out.obj_dict.items():
                 assert k in ds.variables, f'{k} not in netcdf file'
@@ -817,7 +825,18 @@ class BaseSimpleFarmModel(object):
         raise NotImplementedError('must be set in a child class')
         return next_state
 
-    def output_eq(self, other, raise_on_diff=False):
+    def output_eq(self, other, raise_on_diff=False, skip_alt_kwargs=None):
+        """
+        check if two models are equal
+
+        :param other: Other model
+        :param raise_on_diff: bool if True raise an error if the models are different, if False just return False
+        :param skip_alt_kwargs: None or iterable of alt_kwargs to skip testing
+        :return:
+        """
+        if skip_alt_kwargs is None:
+            skip_alt_kwargs = []
+        skip_alt_kwargs = np.atleast_1d(skip_alt_kwargs)
         if type(self) != type(other):
             if raise_on_diff:
                 raise ValueError(f'must be same type, got {type(self)} and {type(other)}')
@@ -830,6 +849,27 @@ class BaseSimpleFarmModel(object):
             if raise_on_diff:
                 raise ValueError(f'model_shape must be the same, got {self.model_shape} and {other.model_shape}')
             return False
+        # check the alt kwargs
+        if self.alt_kwargs is not None:
+            if not hasattr(other, 'alt_kwargs'):
+                if raise_on_diff:
+                    raise ValueError(f'alt_kwargs must be set in other')
+                return False
+            if self.alt_kwargs != other.alt_kwargs:
+                if raise_on_diff:
+                    raise ValueError(f'alt_kwargs must be the same, got {self.alt_kwargs} and {other.alt_kwargs}')
+                return False
+            different_alt_kwargs = []
+            for k in self.alt_kwargs:
+                if k in skip_alt_kwargs:
+                    continue
+                if getattr(self, k) != getattr(other, k):
+                    different_alt_kwargs.append(k)
+            if len(different_alt_kwargs) > 0:
+                if raise_on_diff:
+                    raise ValueError(f'different alt_kwargs: {different_alt_kwargs}')
+                return False
+
         different = []
         missing = []
         for k, v in self.obj_dict.items():

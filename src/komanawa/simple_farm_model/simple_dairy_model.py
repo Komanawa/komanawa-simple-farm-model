@@ -69,7 +69,7 @@ For additional feed imports, rather than having a just in time feed import proce
 Marginal cost/benefit calculation
 ===================================
 
-The marginal cost and benefit of a potential state change is assessed on the 1st and 15th day of each month.  T
+The marginal cost and benefit of a potential state change is assessed on the 1st and 15th day of each month.
 
 The marginal benefit is calculated as:
 
@@ -103,20 +103,19 @@ The model allows for 4 different state changes, only one of which can be impleme
 * 0: no change
 * 1: cull cows
 * 2: dryoff cows
-* 3: go to once a day milking
 
 The model assesses the alternate step change in the following order:
 
 1.  Before end of February (months 8-2) go to:
-    1. once-a-day milking
-    2. this cull up to the replacement rate (no on-going feed requirement)
-    3. Post this dry-off (significantly reduced feed demand).
+    1. this cull up to the replacement rate (no on-going feed requirement)
+    2. Post this dry-off (significantly reduced feed demand).
 2. After end of Feb, but before end of April (months 3-4) go to:
     1. Cull up to the replacement rate
-    2. once-a-day milking
-    3. dry-off stock
+    2. dry-off stock
 3. For months 5, 6, 7, all cows are dried off regardless so
     1. No change
+
+The amount of cows to cull/dry off can either be optimised (cull_dry_step=None) or set to a fixed step size (cull_dry_step=0.01).  The optimisation is done using the scipy minimize_scalar function. Note that the optimisation process significantly increases the runtime of the model.
 """
 import logging
 import numpy as np
@@ -179,7 +178,7 @@ class SimpleDairyModel(BaseSimpleFarmModel):
     annual_supplement_import = 0.0  # 0% of total feed required per year (less any stored feed)
 
     ndays_feed_import = 7  # when needing to import feed, import 7 days worth of feed (from 7 days supplemental needed)
-    state_change_days = [1, 15]  # allow for a change in farm state on day 1 and 15 of each month
+    state_change_days = (1, 15)  # allow for a change in farm state on day 1 and 15 of each month
     month_reset = 7  # trigger farm reset on day 1 in August,
     homegrown_efficiency = 0.8
     supplemental_efficiency = 0.9
@@ -204,9 +203,11 @@ class SimpleDairyModel(BaseSimpleFarmModel):
     replacement_cow_loss = 0  # simplifying assumption, no loss of replacements
     dry_cow_loss = 0.021  # 2.1% loss per year
     allow_1aday = False  # allow for 1 a day milking, abandoning... drying off some small percentage of cows also accomplishes the same thing given we don't have any running costs.
+    alt_kwargs = ('peak_lact_cow_per_ha', 'cull_dry_step', 'ncore_opt', 'logging_level',)
 
     def __init__(self, all_months, istate, pg, ifeed, imoney, sup_feed_cost, product_price, monthly_input=True,
-                 peak_lact_cow_per_ha=default_peak_cow, ncore_opt=1, logging_level=logging.CRITICAL):
+                 peak_lact_cow_per_ha=default_peak_cow, ncore_opt=1, logging_level=logging.CRITICAL,
+                 cull_dry_step=None):
         """
 
         :param all_months: integer months, defines mon_len and time_len
@@ -220,10 +221,20 @@ class SimpleDairyModel(BaseSimpleFarmModel):
         :param peak_lact_cow_per_ha: peak lactating cows per ha float
         :param ncore_opt: number of cores to use for optimization of the cull/dryoff decision if ncore_opt==1, do not multiprocess, if ncore_opt > 1, use ncore_opt cores, if ncore_opt =None, use all available cores
         :param logging_level: logging level for the multiprocess component
+        :param cull_dry_step: if None, use the optimized cull/dryoff decision, if float, use the cull/dryoff decision with a step size of cull_dry_step
         """
+        if cull_dry_step is None:
+            self.cull_dry_step = None
+            self._calc_alternate_state_future = self._calc_alternate_state_future_opt
+        else:
+            assert pd.api.types.is_float(cull_dry_step), 'cull_dry_step must be a float'
+            assert 0 <= cull_dry_step <= 1, 'cull_dry_step must be between 0 and 1'
+            self.cull_dry_step = float(cull_dry_step)
+            self._calc_alternate_state_future = self._calc_alternate_state_future_step
         self.ncore_opt = ncore_opt
         self.logging_level = logging_level
-        self.peak_lact_cow_per_ha = peak_lact_cow_per_ha
+        assert peak_lact_cow_per_ha > 0, 'peak_lact_cow_per_ha must be >0'
+        self.peak_lact_cow_per_ha = float(peak_lact_cow_per_ha)
         if self.allow_1aday:
             self.calc_next_state_quant = self.calc_next_state_quant_1aday
         else:
@@ -752,11 +763,7 @@ class SimpleDairyModel(BaseSimpleFarmModel):
 
         return future_product, supplement_cost
 
-    def _calc_alternate_state_future(self, month, i_month, remaining_months, current_state, use_pg, use_prod_price,
-                                     current_feed, use_feed_cost, cum_feed):
-
-        # can do one of once a day, cull, or dryoff
-
+    def _prep_alt_data(self, month, current_state):
         next_action = self.calc_next_state_quant(month, current_state)
         to_once_aday_idx = next_action == 3
         once_aday_idx = np.in1d(current_state, self.milk_1_aday_states)
@@ -774,6 +781,71 @@ class SimpleDairyModel(BaseSimpleFarmModel):
         alt_dry_fraction[to_once_aday_idx] = self.dry_cow_fraction[to_once_aday_idx]
         alt_lact_fraction[no_change_idx] = self.lactating_cow_fraction[no_change_idx]
         alt_dry_fraction[no_change_idx] = self.dry_cow_fraction[no_change_idx]
+        return (cull_idx, dryoff_idx, once_aday_idx, alt_lact_fraction, alt_dry_fraction,
+                to_once_aday_idx, next_action)
+
+    def _run_alt(self, alt_lact_fraction, alt_dry_fraction, i_month, remaining_months, once_aday_idx, to_once_aday_idx,
+                 use_pg,
+                 use_prod_price, current_state, current_feed, use_feed_cost, cum_feed, next_action):
+        assert (alt_lact_fraction >= 0).all()
+        assert (alt_dry_fraction >= 0).all()
+
+        future_product, supplement_cost, deficit_feed = self._calc_cost_production(
+            i_month=i_month,
+            remaining_months=remaining_months,
+            lact_fraction=alt_lact_fraction,
+            dry_fraction=alt_dry_fraction,
+            once_aday_idx=once_aday_idx | to_once_aday_idx,
+            use_prod_price=use_prod_price,
+            use_pg=use_pg,
+            current_state=current_state,
+            current_feed=current_feed,
+            use_feed_cost=use_feed_cost,
+            current_cum_import=cum_feed,
+            nsims=self.nsims)
+
+        # feed requirements
+        self.out_alt_fut_prod[i_month] = future_product
+        self.out_cur_fut_feed_def[i_month] = deficit_feed
+        assert (alt_lact_fraction >= 0).all()
+        assert (alt_dry_fraction >= 0).all()
+
+        return future_product, supplement_cost, next_action, alt_lact_fraction, alt_dry_fraction
+
+    def _calc_alternate_state_future_step(self, month, i_month, remaining_months, current_state, use_pg, use_prod_price,
+                                          current_feed, use_feed_cost, cum_feed):
+        (cull_idx, dryoff_idx, once_aday_idx, alt_lact_fraction, alt_dry_fraction,
+         to_once_aday_idx, next_action) = self._prep_alt_data(month, current_state)
+
+        if cull_idx.any():
+            ncull = np.full(cull_idx.shape, 0.)
+            ncull[cull_idx] = self.cull_dry_step
+            max_cull = self.lactating_cow_fraction + self.dry_cow_fraction - self.min_cow[month]
+            ncull[ncull > max_cull] = max_cull[ncull > max_cull]
+            alt_dry_fraction[cull_idx] = t = np.maximum(0, self.dry_cow_fraction[cull_idx] - ncull[cull_idx])
+            ncull[cull_idx] = ncull[cull_idx] - (self.dry_cow_fraction[cull_idx] - t)
+            alt_lact_fraction[cull_idx] = t = np.maximum(0, self.lactating_cow_fraction[cull_idx] - ncull[cull_idx])
+            ncull[cull_idx] = ncull[cull_idx] - (self.lactating_cow_fraction[cull_idx] - t)
+            assert np.allclose(ncull, 0)
+            assert all(alt_lact_fraction[cull_idx] + alt_dry_fraction[cull_idx] >= self.min_cow[month])
+
+        if dryoff_idx.any():
+            ndry = np.full(dryoff_idx.shape, 0)
+            ndry[dryoff_idx] = self.cull_dry_step
+            max_dry = self.lactating_cow_fraction
+            ndry[ndry > max_dry] = max_dry[ndry > max_dry]
+            alt_dry_fraction[dryoff_idx] = self.dry_cow_fraction[dryoff_idx] + ndry[dryoff_idx]
+            alt_lact_fraction[dryoff_idx] = self.lactating_cow_fraction[dryoff_idx] - ndry[dryoff_idx]
+
+        return self._run_alt(alt_lact_fraction, alt_dry_fraction, i_month, remaining_months, once_aday_idx,
+                             to_once_aday_idx, use_pg,
+                             use_prod_price, current_state, current_feed, use_feed_cost, cum_feed, next_action)
+
+    def _calc_alternate_state_future_opt(self, month, i_month, remaining_months, current_state, use_pg, use_prod_price,
+                                         current_feed, use_feed_cost, cum_feed):
+        # can do one of once a day, cull, or dryoff
+        (cull_idx, dryoff_idx, once_aday_idx, alt_lact_fraction, alt_dry_fraction,
+         to_once_aday_idx, next_action) = self._prep_alt_data(month, current_state)
 
         # cull cows optimisation
         if cull_idx.any():
@@ -830,30 +902,9 @@ class SimpleDairyModel(BaseSimpleFarmModel):
             alt_lact_fraction[opt_data_dry[:, 0].astype(int)] = opt_data_dry[:, 1]
             alt_dry_fraction[opt_data_dry[:, 0].astype(int)] = opt_data_dry[:, 2]
 
-        assert (alt_lact_fraction >= 0).all()
-        assert (alt_dry_fraction >= 0).all()
-
-        future_product, supplement_cost, deficit_feed = self._calc_cost_production(
-            i_month=i_month,
-            remaining_months=remaining_months,
-            lact_fraction=alt_lact_fraction,
-            dry_fraction=alt_dry_fraction,
-            once_aday_idx=once_aday_idx | to_once_aday_idx,
-            use_prod_price=use_prod_price,
-            use_pg=use_pg,
-            current_state=current_state,
-            current_feed=current_feed,
-            use_feed_cost=use_feed_cost,
-            current_cum_import=cum_feed,
-            nsims=self.nsims)
-
-        # feed requirements
-        self.out_alt_fut_prod[i_month] = future_product
-        self.out_cur_fut_feed_def[i_month] = deficit_feed
-        assert (alt_lact_fraction >= 0).all()
-        assert (alt_dry_fraction >= 0).all()
-
-        return future_product, supplement_cost, next_action, alt_lact_fraction, alt_dry_fraction
+        return self._run_alt(alt_lact_fraction, alt_dry_fraction, i_month, remaining_months, once_aday_idx,
+                             to_once_aday_idx, use_pg,
+                             use_prod_price, current_state, current_feed, use_feed_cost, cum_feed, next_action)
 
     def calc_next_state_quant_1aday(self, month, current_state):
         """
@@ -936,7 +987,6 @@ class SimpleDairyModel(BaseSimpleFarmModel):
         how many cows to cull to get to the best option
         :return:
         """
-        # todo could multiprocess this
         max_cull = lactating_cow + dry_cow - self.min_cow[month]
         assert (max_cull > 0).all()
 
@@ -989,7 +1039,6 @@ class SimpleDairyModel(BaseSimpleFarmModel):
         how many cows to cull to get to the best option
         :return:
         """
-        # todo could multiprocess this
         max_dry = lactating_cow
         assert (max_dry > 0).all()
 
@@ -1035,7 +1084,6 @@ class SimpleDairyModel(BaseSimpleFarmModel):
                               use_pg, current_state, current_feed, use_feed_cost, nsims,
                               current_cum_import,
                               inc_scarcity=True):
-
         current_cum_import = current_cum_import.copy()
         remaining_months = remaining_months.copy()
         lact_fraction = lact_fraction.copy()
@@ -1156,10 +1204,11 @@ class DairyModelWithSCScarcity(SimpleDairyModel):
     a version with an s-curve scarcity model requiring additional parameters s, a, b, c
     """
     s, a, b, c = None, None, None, None
+    alt_kwargs = ('peak_lact_cow_per_ha', 'cull_dry_step', 'ncore_opt', 'logging_level', 's', 'a', 'b', 'c')
 
     def __init__(self, all_months, istate, pg, ifeed, imoney, sup_feed_cost, product_price, monthly_input=True,
                  s=None, a=None, b=None, c=None, peak_lact_cow_per_ha=default_peak_cow, ncore_opt=1,
-                 logging_level=logging.CRITICAL):
+                 logging_level=logging.CRITICAL, cull_dry_step=None):
         """
 
         :param all_months: integer months, defines mon_len and time_len
@@ -1177,11 +1226,13 @@ class DairyModelWithSCScarcity(SimpleDairyModel):
         :param peak_lact_cow_per_ha: peak lactating cows per ha float
         :param ncore_opt: number of cores to use for optimization of the cull/dryoff decision if ncore_opt==1, do not multiprocess, if ncore_opt > 1, use ncore_opt cores, if ncore_opt =None, use all available cores
         :param logging_level: logging level for the multiprocess component
+        :param cull_dry_step: if None, use the optimized cull/dryoff decision, if float, use the cull/dryoff decision with a step size of cull_dry_step
         """
-        self.s, self.a, self.b, self.c = s, a, b, c
         assert all([e is not None for e in [s, a, b, c]]), 's, a, b, c must not be None'
+        self.s, self.a, self.b, self.c = float(s), float(a), float(b), float(c)
         super().__init__(all_months, istate, pg, ifeed, imoney, sup_feed_cost, product_price, monthly_input,
-                         peak_lact_cow_per_ha=peak_lact_cow_per_ha, ncore_opt=ncore_opt, logging_level=logging_level)
+                         peak_lact_cow_per_ha=peak_lact_cow_per_ha, ncore_opt=ncore_opt, logging_level=logging_level,
+                         cull_dry_step=cull_dry_step)
 
     def plot_scurve(self, plt_dnz_fs=False):
         """
