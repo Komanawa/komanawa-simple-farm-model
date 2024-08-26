@@ -187,3 +187,17 @@ class TestSimpleDairyModel(unittest.TestCase):
                                             s=s, a=a, b=b, c=c, )
         model_mp.run_model(printi=False)
         model.output_eq(model_mp, raise_on_diff=True, skip_alt_kwargs=['ncore_opt'])
+
+    def test_weird_failure(self):
+        input_data = self.get_eyrewell_test_data()
+        nsims = input_data['nsims']
+        peak_cow, s, a, b, c = [18.03014198, 48.21515981,  2.09236717,  2.16710216, 10.12209119]
+        model = DairyModelWithSCScarcity(input_data['all_months'],
+                                         istate=[0] * nsims, pg=input_data['pg'], ifeed=[0] * nsims,
+                                         imoney=[0] * nsims,
+                                         peak_lact_cow_per_ha=peak_cow,
+                                         sup_feed_cost=input_data['sup_cost'],
+                                         product_price=input_data['product_price'],
+                                         monthly_input=True, ncore_opt=1,
+                                         s=s, a=a, b=b, c=c, )
+        model.run_model(printi=False)

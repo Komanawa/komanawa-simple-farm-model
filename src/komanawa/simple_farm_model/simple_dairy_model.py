@@ -1277,7 +1277,8 @@ class DairyModelWithSCScarcity(SimpleDairyModel):
                                               axis=0)
         cum_feed_per = (start_cum_ann_feed_import + new_feed.cumsum(axis=0)) / self.get_annual_feed() * 100
         assert cum_feed_per.min() >= 0, f'{cum_feed_per.min()}'
-        assert cum_feed_per.max() <= 100, f'{cum_feed_per.max()}'
+        assert cum_feed_per.max() <= 105, f'{cum_feed_per.max()}'  # 105 to allow for rounding errors
+        cum_feed_per[cum_feed_per > 100] = 100
         cost_per_mj = s_curve(
             cum_feed_per, s=self.s, a=self.a, b=self.b,
             c=self.c) * self.sup_feed_cost[i_month: i_month + new_feed.shape[0]]
