@@ -213,8 +213,8 @@ class SimpleDairyModel(BaseSimpleFarmModel):
         :param all_months: integer months, defines mon_len and time_len
         :param istate: initial state number or np.ndarray shape (nsims,) defines number of simulations
         :param pg: pasture growth kgDM/ha/day np.ndarray shape (mon_len,) or (mon_len, nsims)
-        :param ifeed: initial feed number float or np.ndarray shape (nsims,)
-        :param imoney: initial money number float or np.ndarray shape (nsims,)
+        :param ifeed: initial feed number float or np.ndarray shape (nsims,) MJ/ha
+        :param imoney: initial money number float or np.ndarray shape (nsims,) $/ha
         :param sup_feed_cost: cost of supplementary feed $/MJ float or np.ndarray shape (nsims,) or (mon_len, nsims)
         :param product_price: income price $/kg product float or np.ndarray shape (nsims,) or (mon_len, nsims)
         :param monthly_input: if True, monthly input, if False, daily input (365 days per year)
@@ -1214,8 +1214,8 @@ class DairyModelWithSCScarcity(SimpleDairyModel):
         :param all_months: integer months, defines mon_len and time_len
         :param istate: initial state number or np.ndarray shape (nsims,) defines number of simulations
         :param pg: pasture growth kgDM/ha/day np.ndarray shape (mon_len,) or (mon_len, nsims)
-        :param ifeed: initial feed number float or np.ndarray shape (nsims,)
-        :param imoney: initial money number float or np.ndarray shape (nsims,)
+        :param ifeed: initial feed number float or np.ndarray shape (nsims,), MJ/ha
+        :param imoney: initial money number float or np.ndarray shape (nsims,) $/ha
         :param sup_feed_cost: cost of supplementary feed $/MJ float or np.ndarray shape (nsims,) or (mon_len, nsims)
         :param product_price: income price $/kg product float or np.ndarray shape (nsims,) or (mon_len, nsims)
         :param monthly_input: if True, monthly input, if False, daily input (365 days per year)
