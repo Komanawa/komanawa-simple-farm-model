@@ -196,6 +196,13 @@ class BaseSimpleFarmModel(object):
         :param product_price: income price $/kg product float or np.ndarray shape (nsims,) or (mon_len, nsims)
         :param monthly_input: if True, monthly input, if False, daily input (365 days per year)
         """
+        assert np.isfinite(np.atleast_1d(istate)).all(), 'istate must be finite'
+        assert np.isfinite(np.atleast_1d(ifeed)).all(), 'ifeed must be finite'
+        assert np.isfinite(np.atleast_1d(imoney)).all(), 'imoney must be finite'
+        assert np.isfinite(np.atleast_1d(pg)).all(), 'pg must be finite'
+        assert np.isfinite(np.atleast_1d(sup_feed_cost)).all(), 'sup_feed_cost must be finite'
+        assert np.isfinite(np.atleast_1d(product_price)).all(), 'product_price must be finite'
+
         self._update_object_dict()
         self._set_arrays(
             all_months=all_months,

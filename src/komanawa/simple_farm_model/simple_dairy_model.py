@@ -1229,6 +1229,7 @@ class DairyModelWithSCScarcity(SimpleDairyModel):
         :param cull_dry_step: if None, use the optimized cull/dryoff decision, if float, use the cull/dryoff decision with a step size of cull_dry_step
         """
         assert all([e is not None for e in [s, a, b, c]]), 's, a, b, c must not be None'
+        assert np.isfinite(np.array([s, a, b, c])).all(), 's, a, b, c must be finite'
         self.s, self.a, self.b, self.c = float(s), float(a), float(b), float(c)
         super().__init__(all_months, istate, pg, ifeed, imoney, sup_feed_cost, product_price, monthly_input,
                          peak_lact_cow_per_ha=peak_lact_cow_per_ha, ncore_opt=ncore_opt, logging_level=logging_level,
