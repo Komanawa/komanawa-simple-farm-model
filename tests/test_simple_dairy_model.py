@@ -9,6 +9,7 @@ from komanawa.simple_farm_model.simple_dairy_model import SimpleDairyModel, Dair
 
 testdatadir = Path(__file__).parent.joinpath('test_data')
 
+
 # keynote the saved tests were only loosely checked, they may not be correct
 
 class TestSimpleDairyModel(unittest.TestCase):
@@ -58,7 +59,16 @@ class TestSimpleDairyModel(unittest.TestCase):
         all_months = [(7 - 1 + i) % 12 + 1 for i in range(12)] * 3
         model = SimpleDairyModel(all_months,
                                  istate=[0, 0], pg=[0] * len(all_months), ifeed=[0, 0], imoney=[0, 0],
-                                 sup_feed_cost=1, product_price=10, monthly_input=True, cull_dry_step=0.01)
+                                 sup_feed_cost=1, product_price=10, opt_mode='step',
+                                 monthly_input=True, cull_dry_step=0.01)
+        model.run_model(printi=False)
+
+    def test_model_course_opt(self): # todo
+        all_months = [(7 - 1 + i) % 12 + 1 for i in range(12)] * 3
+        model = SimpleDairyModel(all_months,
+                                 istate=[0, 0], pg=[0] * len(all_months), ifeed=[0, 0], imoney=[0, 0],
+                                 sup_feed_cost=1, product_price=10, opt_mode='course',
+                                 monthly_input=True, cull_dry_step=None)
         model.run_model(printi=False)
 
     def test_model_with_data(self):
@@ -108,6 +118,7 @@ class TestSimpleDairyModel(unittest.TestCase):
                                  istate=[0] * nsims, pg=input_data['pg'], ifeed=[0] * nsims, imoney=[0] * nsims,
                                  sup_feed_cost=input_data['sup_cost'],
                                  product_price=input_data['product_price'],
+                                 opt_mode='step',
                                  monthly_input=True, ncore_opt=None, peak_lact_cow_per_ha=input_data['peak_cow'],
                                  cull_dry_step=0.1)
         model.run_model(printi=False)
@@ -130,6 +141,7 @@ class TestSimpleDairyModel(unittest.TestCase):
                                          imoney=[0] * nsims,
                                          sup_feed_cost=input_data['sup_cost'],
                                          product_price=input_data['product_price'],
+                                         opt_mode='step',
                                          monthly_input=True, ncore_opt=None,
                                          s=s, a=a, b=b, c=c, cull_dry_step=0.1)
         model.run_model(printi=False)
@@ -191,7 +203,7 @@ class TestSimpleDairyModel(unittest.TestCase):
     def test_weird_failure(self):
         input_data = self.get_eyrewell_test_data()
         nsims = input_data['nsims']
-        peak_cow, s, a, b, c = [18.03014198, 48.21515981,  2.09236717,  2.16710216, 10.12209119]
+        peak_cow, s, a, b, c = [18.03014198, 48.21515981, 2.09236717, 2.16710216, 10.12209119]
         model = DairyModelWithSCScarcity(input_data['all_months'],
                                          istate=[0] * nsims, pg=input_data['pg'], ifeed=[0] * nsims,
                                          imoney=[0] * nsims,

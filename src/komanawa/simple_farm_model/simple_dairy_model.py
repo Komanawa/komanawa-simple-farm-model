@@ -203,9 +203,10 @@ class SimpleDairyModel(BaseSimpleFarmModel):
     replacement_cow_loss = 0  # simplifying assumption, no loss of replacements
     dry_cow_loss = 0.021  # 2.1% loss per year
     allow_1aday = False  # allow for 1 a day milking, abandoning... drying off some small percentage of cows also accomplishes the same thing given we don't have any running costs.
-    alt_kwargs = ('peak_lact_cow_per_ha', 'cull_dry_step', 'ncore_opt', 'logging_level',)
+    alt_kwargs = ('peak_lact_cow_per_ha', 'cull_dry_step', 'ncore_opt', 'logging_level', 'opt_mode')
 
-    def __init__(self, all_months, istate, pg, ifeed, imoney, sup_feed_cost, product_price, monthly_input=True,
+    def __init__(self, all_months, istate, pg, ifeed, imoney, sup_feed_cost, product_price,
+                 opt_mode='optimised', monthly_input=True,
                  peak_lact_cow_per_ha=default_peak_cow, ncore_opt=1, logging_level=logging.CRITICAL,
                  cull_dry_step=None):
         """
@@ -217,20 +218,36 @@ class SimpleDairyModel(BaseSimpleFarmModel):
         :param imoney: initial money number float or np.ndarray shape (nsims,) $/ha
         :param sup_feed_cost: cost of supplementary feed $/MJ float or np.ndarray shape (nsims,) or (mon_len, nsims)
         :param product_price: income price $/kg product float or np.ndarray shape (nsims,) or (mon_len, nsims)
+        :param opt_mode: one of:
+
+        * 'optimised': use scipy.minimize_scalar to optimise the fraction of cows to cull dryoff at each decision point (cpu intensive, but most precise, low memory) cull_dry_step must be None
+        * 'step': use a fixed step size for cull/dryoff decision (less cpu intensive, less precise, low memory) cull_dry_step must be set
+        * 'course': pick the best of an a. priori. number of cull/dryoff decisions (low cpu, high memory, moderate precision) cull_dry_step must be None # todo add new args for this mode, add to alt_kwargs
+
         :param monthly_input: if True, monthly input, if False, daily input (365 days per year)
         :param peak_lact_cow_per_ha: peak lactating cows per ha float
         :param ncore_opt: number of cores to use for optimization of the cull/dryoff decision if ncore_opt==1, do not multiprocess, if ncore_opt > 1, use ncore_opt cores, if ncore_opt =None, use all available cores
         :param logging_level: logging level for the multiprocess component
         :param cull_dry_step: if None, use the optimized cull/dryoff decision, if float, use the cull/dryoff decision with a step size of cull_dry_step
         """
-        if cull_dry_step is None:
+        assert opt_mode in ('optimised', 'step', 'course'), 'opt_mode must be one of: optimised, step, course'
+        if opt_mode == 'optimised':
+            assert cull_dry_step is None
             self.cull_dry_step = None
             self._calc_alternate_state_future = self._calc_alternate_state_future_opt
-        else:
+        elif opt_mode == 'step':
             assert pd.api.types.is_float(cull_dry_step), 'cull_dry_step must be a float'
             assert 0 <= cull_dry_step <= 1, 'cull_dry_step must be between 0 and 1'
             self.cull_dry_step = float(cull_dry_step)
             self._calc_alternate_state_future = self._calc_alternate_state_future_step
+        elif opt_mode == 'course':
+            assert cull_dry_step is None
+            self.cull_dry_step = None
+            self._calc_alternate_state_future = self._calc_alternate_state_course_opt
+        else:
+            raise ValueError(f'opt_mode must be one of: optimised, step, course, not {opt_mode}')
+
+        self.opt_mode = opt_mode
         self.ncore_opt = ncore_opt
         self.logging_level = logging_level
         assert peak_lact_cow_per_ha > 0, 'peak_lact_cow_per_ha must be >0'
@@ -290,11 +307,6 @@ class SimpleDairyModel(BaseSimpleFarmModel):
         self.set_mean_pg(pg_dict=None, pg_raw=self.pg, months=self.all_months)
         self.set_mean_sup_cost(sup_dict=None, sup_cost_raw=self.sup_feed_cost, months=self.all_months)
         self.set_mean_product_price(prod_price_dict=None, prod_price_raw=self.product_price, months=self.all_months)
-
-        # set feed store trigger to 2 weeks of fully lactating feed requirements, with 2 * replacements
-        start_cows = self._start_lactating_cow_fraction + self._start_dry_cow_fraction
-        max_lact_feed = max(self.feed_per_cow_lactating.values())
-        max_rep_feed = max(self.feed_per_cow_replacement.values())
 
         self.feed_store_trigger = 1000
 
@@ -786,7 +798,7 @@ class SimpleDairyModel(BaseSimpleFarmModel):
 
     def _run_alt(self, alt_lact_fraction, alt_dry_fraction, i_month, remaining_months, once_aday_idx, to_once_aday_idx,
                  use_pg,
-                 use_prod_price, current_state, current_feed, use_feed_cost, cum_feed, next_action):
+                 use_prod_price, current_state, current_feed, use_feed_cost, cum_feed):
         assert (alt_lact_fraction >= 0).all()
         assert (alt_dry_fraction >= 0).all()
 
@@ -810,7 +822,155 @@ class SimpleDairyModel(BaseSimpleFarmModel):
         assert (alt_lact_fraction >= 0).all()
         assert (alt_dry_fraction >= 0).all()
 
-        return future_product, supplement_cost, next_action, alt_lact_fraction, alt_dry_fraction
+        return future_product, supplement_cost, alt_lact_fraction, alt_dry_fraction
+
+    def _calc_alternate_state_course_opt(self, month, i_month, remaining_months, current_state, use_pg, use_prod_price,
+                                         current_feed, use_feed_cost, cum_feed):
+        (cull_idx, dryoff_idx, once_aday_idx, alt_lact_fraction, alt_dry_fraction,
+         to_once_aday_idx, next_action) = self._prep_alt_data(month, current_state)
+
+        out_alt_fut_prod = np.zeros_like(alt_lact_fraction)
+        out_cur_fut_feed_def = np.zeros_like(alt_lact_fraction)
+
+        if cull_idx.any():
+            # shape of the new data (alt_cull) is (nsims_with_cull, ncull_steps)
+            max_cull = (self.lactating_cow_fraction + self.dry_cow_fraction - self.min_cow[month])[cull_idx]
+            ncull_steps = 10  # todo make a variable if this works
+            ncull = np.array([np.linspace(0, m, ncull_steps) for m in max_cull])
+            ncull_org = ncull.copy() # for debugging
+            alt_cull_dry = np.repeat(self.dry_cow_fraction[cull_idx][:, np.newaxis], ncull_steps, axis=1)
+            alt_cull_lact = np.repeat(self.lactating_cow_fraction[cull_idx][:, np.newaxis], ncull_steps, axis=1)
+            t = np.maximum(0, alt_cull_dry - ncull)
+            ncull = ncull - (alt_cull_dry - t)
+            alt_cull_dry = t
+            t0 = np.maximum(0, alt_cull_lact - ncull)
+            ncull = ncull - (alt_cull_lact - t0)
+            alt_cull_lact = t0
+            assert np.allclose(ncull, 0)
+            assert ((alt_cull_lact + alt_cull_dry) >= self.min_cow[month]).all()
+            temp_future_product, temp_supplement_cost, temp_deficit_feed = self.__run_alt_course(
+                in_alt_lact=alt_cull_lact,
+                in_alt_dry=alt_cull_dry,
+                i_month=i_month,
+                remaining_months=remaining_months,
+                once_aday_idx=once_aday_idx,
+                to_once_aday_idx=to_once_aday_idx,
+                in_pg=use_pg,
+                in_prod_price=use_prod_price,
+                current_state=current_state,
+                current_feed=current_feed,
+                in_feed_cost=use_feed_cost,
+                cum_feed=cum_feed,
+                steps=ncull_steps
+            )
+
+            net = temp_future_product - temp_supplement_cost
+            best_idx = np.argmax(net, axis=1)
+            d1_idx = np.arange(alt_cull_lact.shape[0])
+            alt_lact_fraction[cull_idx] = alt_cull_lact[d1_idx, best_idx]
+            alt_dry_fraction[cull_idx] = alt_cull_dry[d1_idx, best_idx]
+            out_alt_fut_prod[cull_idx] = temp_future_product[d1_idx, best_idx]
+            out_cur_fut_feed_def[cull_idx] = temp_deficit_feed[d1_idx, best_idx]
+
+        if dryoff_idx.any():
+            ndry_steps = 10  # todo make a variable if this works
+            ndry = np.array([np.linspace(0, m, ndry_steps) for m in self.lactating_cow_fraction[dryoff_idx]])
+            alt_dry_dry = np.repeat(self.dry_cow_fraction[dryoff_idx][:, np.newaxis], ndry_steps, axis=1)
+            alt_dry_lact = np.repeat(self.lactating_cow_fraction[dryoff_idx][:, np.newaxis], ndry_steps, axis=1)
+            alt_dry_dry += ndry
+            alt_dry_lact -= ndry
+            temp_future_product, temp_supplement_cost, temp_deficit_feed = self.__run_alt_course(
+                in_alt_lact=alt_dry_lact,
+                in_alt_dry=alt_dry_dry,
+                i_month=i_month,
+                remaining_months=remaining_months,
+                once_aday_idx=once_aday_idx,
+                to_once_aday_idx=to_once_aday_idx,
+                in_pg=use_pg,
+                in_prod_price=use_prod_price,
+                current_state=current_state,
+                current_feed=current_feed,
+                in_feed_cost=use_feed_cost,
+                cum_feed=cum_feed,
+                steps=ndry_steps
+            )
+
+            net = temp_future_product - temp_supplement_cost
+            best_idx = np.argmax(net, axis=1)
+            d1_idx = np.arange(alt_dry_lact.shape[0])
+            alt_lact_fraction[dryoff_idx] = alt_dry_lact[d1_idx, best_idx]
+            alt_dry_fraction[dryoff_idx] = alt_dry_dry[d1_idx, best_idx]
+            out_alt_fut_prod[dryoff_idx] = temp_future_product[d1_idx, best_idx]
+            out_cur_fut_feed_def[dryoff_idx] = temp_deficit_feed[d1_idx, best_idx]
+
+        self.out_alt_fut_prod[i_month] = out_alt_fut_prod
+        self.out_cur_fut_feed_def[i_month] = out_cur_fut_feed_def
+        assert (alt_lact_fraction >= 0).all()
+        assert (alt_dry_fraction >= 0).all()
+
+        return out_alt_fut_prod, out_cur_fut_feed_def, next_action, alt_lact_fraction, alt_dry_fraction
+
+    def __run_alt_course(self, in_alt_lact, in_alt_dry, i_month, remaining_months, once_aday_idx, to_once_aday_idx,
+                         in_pg, in_prod_price, current_state, current_feed, in_feed_cost, cum_feed, steps):
+        assert in_alt_lact.shape == in_alt_dry.shape
+        datashape = in_alt_lact.shape
+        in_alt_dry = in_alt_dry.flatten()
+        in_alt_lact = in_alt_lact.flatten()
+
+        # define and check input shapes
+        in_2d_shape = (len(remaining_months), datashape[0])
+        in_1d_shape = (datashape[0],)
+        assert in_pg.shape == in_prod_price.shape == in_feed_cost.shape == in_2d_shape
+        assert current_state.shape == current_feed.shape == cum_feed.shape == in_1d_shape
+        assert once_aday_idx.shape == to_once_aday_idx.shape == in_1d_shape
+
+        # reshape 1d input data
+        use_once_day_idx = np.repeat(once_aday_idx[:, np.newaxis], steps, axis=1)
+        assert use_once_day_idx.shape == datashape
+        use_once_day_idx = use_once_day_idx.flatten()
+        use_to_once_day_idx = np.repeat(to_once_aday_idx[:, np.newaxis], steps, axis=1)
+        assert use_to_once_day_idx.shape == datashape
+        use_to_once_day_idx = use_to_once_day_idx.flatten()
+        use_current_state = np.repeat(current_state[:, np.newaxis], steps, axis=1)
+        assert use_current_state.shape == datashape
+        use_current_state = use_current_state.flatten()
+        use_current_feed = np.repeat(current_feed[:, np.newaxis], steps, axis=1)
+        assert use_current_feed.shape == datashape
+        use_current_feed = use_current_feed.flatten()
+        use_cum_feed = np.repeat(cum_feed[:, np.newaxis], steps, axis=1)
+        assert use_cum_feed.shape == datashape
+        use_cum_feed = use_cum_feed.flatten()
+
+        # reshape 2d input data
+        use_pg = np.repeat(in_pg[:, :, np.newaxis], steps, axis=2)
+        assert use_pg.shape == remaining_months.shape + datashape
+        use_pg = use_pg.reshape((use_pg.shape[0], use_pg.shape[1] * use_pg.shape[2]))
+        use_prod_price = np.repeat(in_prod_price[:, :, np.newaxis], steps, axis=2)
+        assert use_prod_price.shape == remaining_months.shape + datashape
+        use_prod_price = use_prod_price.reshape(
+            (use_prod_price.shape[0], use_prod_price.shape[1] * use_prod_price.shape[2]))
+        use_feed_cost = np.repeat(in_feed_cost[:, :, np.newaxis], steps, axis=2)
+        assert use_feed_cost.shape == remaining_months.shape + datashape
+        use_feed_cost = use_feed_cost.reshape((use_feed_cost.shape[0], use_feed_cost.shape[1] * use_feed_cost.shape[2]))
+
+        future_product, supplement_cost, deficit_feed = self._calc_cost_production(
+            i_month=i_month,
+            remaining_months=remaining_months,
+            lact_fraction=in_alt_lact,
+            dry_fraction=in_alt_dry,
+            once_aday_idx=use_once_day_idx | use_to_once_day_idx,
+            use_prod_price=use_prod_price,
+            use_pg=use_pg,
+            current_state=use_current_state,
+            current_feed=use_current_feed,
+            use_feed_cost=use_feed_cost,
+            current_cum_import=use_cum_feed,
+            nsims=np.prod(datashape))
+
+        future_product = future_product.reshape(datashape)
+        supplement_cost = supplement_cost.reshape(datashape)
+        deficit_feed = deficit_feed.reshape(datashape)
+        return future_product, supplement_cost, deficit_feed
 
     def _calc_alternate_state_future_step(self, month, i_month, remaining_months, current_state, use_pg, use_prod_price,
                                           current_feed, use_feed_cost, cum_feed):
@@ -837,9 +997,11 @@ class SimpleDairyModel(BaseSimpleFarmModel):
             alt_dry_fraction[dryoff_idx] = self.dry_cow_fraction[dryoff_idx] + ndry[dryoff_idx]
             alt_lact_fraction[dryoff_idx] = self.lactating_cow_fraction[dryoff_idx] - ndry[dryoff_idx]
 
-        return self._run_alt(alt_lact_fraction, alt_dry_fraction, i_month, remaining_months, once_aday_idx,
-                             to_once_aday_idx, use_pg,
-                             use_prod_price, current_state, current_feed, use_feed_cost, cum_feed, next_action)
+        (future_product, supplement_cost, out_alt_lact,
+         out_alt_dry) = self._run_alt(alt_lact_fraction, alt_dry_fraction, i_month, remaining_months, once_aday_idx,
+                                      to_once_aday_idx, use_pg,
+                                      use_prod_price, current_state, current_feed, use_feed_cost, cum_feed)
+        return future_product, supplement_cost, next_action, out_alt_lact, out_alt_dry
 
     def _calc_alternate_state_future_opt(self, month, i_month, remaining_months, current_state, use_pg, use_prod_price,
                                          current_feed, use_feed_cost, cum_feed):
@@ -902,9 +1064,11 @@ class SimpleDairyModel(BaseSimpleFarmModel):
             alt_lact_fraction[opt_data_dry[:, 0].astype(int)] = opt_data_dry[:, 1]
             alt_dry_fraction[opt_data_dry[:, 0].astype(int)] = opt_data_dry[:, 2]
 
-        return self._run_alt(alt_lact_fraction, alt_dry_fraction, i_month, remaining_months, once_aday_idx,
-                             to_once_aday_idx, use_pg,
-                             use_prod_price, current_state, current_feed, use_feed_cost, cum_feed, next_action)
+        (future_product, supplement_cost, out_alt_lact,
+         out_alt_dry) = self._run_alt(alt_lact_fraction, alt_dry_fraction, i_month, remaining_months, once_aday_idx,
+                                      to_once_aday_idx, use_pg,
+                                      use_prod_price, current_state, current_feed, use_feed_cost, cum_feed)
+        return future_product, supplement_cost, next_action, out_alt_lact, out_alt_dry
 
     def calc_next_state_quant_1aday(self, month, current_state):
         """
@@ -1204,9 +1368,10 @@ class DairyModelWithSCScarcity(SimpleDairyModel):
     a version with an s-curve scarcity model requiring additional parameters s, a, b, c
     """
     s, a, b, c = None, None, None, None
-    alt_kwargs = ('peak_lact_cow_per_ha', 'cull_dry_step', 'ncore_opt', 'logging_level', 's', 'a', 'b', 'c')
+    alt_kwargs = ('peak_lact_cow_per_ha', 'cull_dry_step', 'ncore_opt', 'logging_level', 'opt_mode', 's', 'a', 'b', 'c')
 
-    def __init__(self, all_months, istate, pg, ifeed, imoney, sup_feed_cost, product_price, monthly_input=True,
+    def __init__(self, all_months, istate, pg, ifeed, imoney, sup_feed_cost, product_price, opt_mode='optimised',
+                 monthly_input=True,
                  s=None, a=None, b=None, c=None, peak_lact_cow_per_ha=default_peak_cow, ncore_opt=1,
                  logging_level=logging.CRITICAL, cull_dry_step=None):
         """
@@ -1218,6 +1383,12 @@ class DairyModelWithSCScarcity(SimpleDairyModel):
         :param imoney: initial money number float or np.ndarray shape (nsims,) $/ha
         :param sup_feed_cost: cost of supplementary feed $/MJ float or np.ndarray shape (nsims,) or (mon_len, nsims)
         :param product_price: income price $/kg product float or np.ndarray shape (nsims,) or (mon_len, nsims)
+        :param opt_mode: one of:
+
+        * 'optimised': use scipy.minimize_scalar to optimise the fraction of cows to cull dryoff at each decision point (cpu intensive, but most precise, low memory) cull_dry_step must be None
+        * 'step': use a fixed step size for cull/dryoff decision (less cpu intensive, less precise, low memory) cull_dry_step must be set
+        * 'course': pick the best of an a. priori. number of cull/dryoff decisions (low cpu, high memory, moderate precision) cull_dry_step must be None # todo add new args for this mode add to alt_kwargs
+
         :param monthly_input: if True, monthly input, if False, daily input (365 days per year)
         :param s: scarcity scurve scale - the maximum value of the curve (if s=1, the maximum value is 1)
         :param a: scarcity scurve steepness - smoothing parameter as a increases the curve becomes steeper and the inflection point moves to the right
@@ -1231,7 +1402,15 @@ class DairyModelWithSCScarcity(SimpleDairyModel):
         assert all([e is not None for e in [s, a, b, c]]), 's, a, b, c must not be None'
         assert np.isfinite(np.array([s, a, b, c])).all(), 's, a, b, c must be finite'
         self.s, self.a, self.b, self.c = float(s), float(a), float(b), float(c)
-        super().__init__(all_months, istate, pg, ifeed, imoney, sup_feed_cost, product_price, monthly_input,
+        super().__init__(all_months=all_months,
+                         istate=istate,
+                         pg=pg,
+                         ifeed=ifeed,
+                         imoney=imoney,
+                         sup_feed_cost=sup_feed_cost,
+                         product_price=product_price,
+                         opt_mode=opt_mode,
+                         monthly_input=monthly_input,
                          peak_lact_cow_per_ha=peak_lact_cow_per_ha, ncore_opt=ncore_opt, logging_level=logging_level,
                          cull_dry_step=cull_dry_step)
 
