@@ -127,6 +127,25 @@ class TestSimpleDairyModel(unittest.TestCase):
         expect = SimpleDairyModel.from_input_file(save_path)
         expect.output_eq(model, raise_on_diff=True)
 
+    def test_model_course_data(self):
+        save_data = False
+        save_path = testdatadir.joinpath('expect_test_model_with_data_course.nc')
+        input_data = self.get_eyrewell_test_data()
+        nsims = input_data['nsims']
+        model = SimpleDairyModel(input_data['all_months'],
+                                 istate=[0] * nsims, pg=input_data['pg'], ifeed=[0] * nsims, imoney=[0] * nsims,
+                                 sup_feed_cost=input_data['sup_cost'],
+                                 product_price=input_data['product_price'],
+                                 opt_mode='course',
+                                 monthly_input=True, ncore_opt=None, peak_lact_cow_per_ha=input_data['peak_cow'],
+                                 cull_dry_step=None)
+        model.run_model(printi=False)
+        if save_data:
+            model.save_results_nc(save_path)
+        # todo compare outputs and then save the expected output
+        #expect = SimpleDairyModel.from_input_file(save_path)
+        #expect.output_eq(model, raise_on_diff=True)
+
     def test_model_stepsize_data_SC(self):
         save_data = False
         save_path = testdatadir.joinpath('expect_test_model_with_data_SC_step.nc')
@@ -149,6 +168,30 @@ class TestSimpleDairyModel(unittest.TestCase):
             model.save_results_nc(save_path)
         expect = DairyModelWithSCScarcity.from_input_file(save_path)
         expect.output_eq(model, raise_on_diff=True)
+
+    def test_model_course_opt_data_SC(self):
+        save_data = False
+        save_path = testdatadir.joinpath('expect_test_model_with_data_SC_course_opt.nc')
+        input_data = self.get_eyrewell_test_data()
+        nsims = input_data['nsims']
+        s = input_data['s']
+        a = input_data['a']
+        b = input_data['b']
+        c = input_data['c']
+        model = DairyModelWithSCScarcity(input_data['all_months'],
+                                         istate=[0] * nsims, pg=input_data['pg'], ifeed=[0] * nsims,
+                                         imoney=[0] * nsims,
+                                         sup_feed_cost=input_data['sup_cost'],
+                                         product_price=input_data['product_price'],
+                                         opt_mode='course',
+                                         monthly_input=True, ncore_opt=None,
+                                         s=s, a=a, b=b, c=c, cull_dry_step=None)
+        model.run_model(printi=False)
+        if save_data:
+            model.save_results_nc(save_path)
+        # todo check it runs then check output and save expected...
+        #expect = DairyModelWithSCScarcity.from_input_file(save_path)
+        #expect.output_eq(model, raise_on_diff=True)
 
     def test_model_mp_no_mp_data(self):
         input_data = self.get_eyrewell_test_data()
