@@ -724,12 +724,12 @@ class SimpleDairyModel(BaseSimpleFarmModel):
 
         # calculate marginal cost
         marginal_cost = cur_future_product - alt_fut_prod
-        assert (marginal_cost >= 0).all()
+        assert ((marginal_cost >= 0) | np.isclose(marginal_cost,0)).all()
         self.out_marginal_cost[i_month] = marginal_cost
 
         # calculate marginal benefit
         marginal_benefit = cur_sup_cost - alt_sup_cost
-        assert (marginal_benefit >= 0).all()
+        assert ((marginal_benefit >= 0) | np.isclose(marginal_benefit, 0)).all()
         self.out_marginal_benefit[i_month] = marginal_benefit
 
         return marginal_cost, marginal_benefit, next_action, alt_lact_fraction, alt_dry_fraction
