@@ -204,12 +204,13 @@ class SimpleDairyModel(BaseSimpleFarmModel):
     replacement_cow_loss = 0  # simplifying assumption, no loss of replacements
     dry_cow_loss = 0.021  # 2.1% loss per year
     allow_1aday = False  # allow for 1 a day milking, abandoning... drying off some small percentage of cows also accomplishes the same thing given we don't have any running costs.
-    alt_kwargs = ('peak_lact_cow_per_ha', 'cull_dry_step', 'ncore_opt', 'logging_level', 'opt_mode')
+    alt_kwargs = (
+    'peak_lact_cow_per_ha', 'cull_dry_step', 'ncore_opt', 'logging_level', 'opt_mode', 'cull_levels', 'dryoff_levels')
 
     def __init__(self, all_months, istate, pg, ifeed, imoney, sup_feed_cost, product_price,
                  opt_mode='optimised', monthly_input=True,
                  peak_lact_cow_per_ha=default_peak_cow, ncore_opt=1, logging_level=logging.CRITICAL,
-                 cull_dry_step=None):
+                 cull_dry_step=None, cull_levels=None, dryoff_levels=None):
         """
 
         :param all_months: integer months, defines mon_len and time_len
@@ -223,30 +224,44 @@ class SimpleDairyModel(BaseSimpleFarmModel):
 
         * 'optimised': use scipy.minimize_scalar to optimise the fraction of cows to cull dryoff at each decision point (cpu intensive, but most precise, low memory) cull_dry_step must be None
         * 'step': use a fixed step size for cull/dryoff decision (less cpu intensive, less precise, low memory) cull_dry_step must be set
-        * 'course': pick the best of an a. priori. number of cull/dryoff decisions (low cpu, high memory, moderate precision) cull_dry_step must be None # todo add new args for this mode, add to alt_kwargs
+        * 'coarse': pick the best of an a. priori. number of cull/dryoff decisions (low cpu, high memory, moderate precision) cull_dry_step must be None
 
         :param monthly_input: if True, monthly input, if False, daily input (365 days per year)
         :param peak_lact_cow_per_ha: peak lactating cows per ha float
         :param ncore_opt: number of cores to use for optimization of the cull/dryoff decision if ncore_opt==1, do not multiprocess, if ncore_opt > 1, use ncore_opt cores, if ncore_opt =None, use all available cores
         :param logging_level: logging level for the multiprocess component
         :param cull_dry_step: if None, use the optimized cull/dryoff decision, if float, use the cull/dryoff decision with a step size of cull_dry_step
+        :param cull_levels: if opt_mode='coarse' the number of equally spaced cull steps to make, otherwise must be None
+        :param dryoff_levels: if opt_mode='coarse' the number of equally spaced dryoff steps to make, otherwise must be None
         """
-        assert opt_mode in ('optimised', 'step', 'course'), 'opt_mode must be one of: optimised, step, course'
+        assert opt_mode in ('optimised', 'step', 'coarse'), 'opt_mode must be one of: optimised, step, coarse'
         if opt_mode == 'optimised':
             assert cull_dry_step is None
+            assert cull_levels is None
+            assert dryoff_levels is None
+            self.cull_levels = None
+            self.dryoff_levels = None
             self.cull_dry_step = None
             self._calc_alternate_state_future = self._calc_alternate_state_future_opt
         elif opt_mode == 'step':
+            assert cull_levels is None
+            assert dryoff_levels is None
+            self.cull_levels = None
+            self.dryoff_levels = None
             assert pd.api.types.is_float(cull_dry_step), 'cull_dry_step must be a float'
             assert 0 <= cull_dry_step <= 1, 'cull_dry_step must be between 0 and 1'
             self.cull_dry_step = float(cull_dry_step)
             self._calc_alternate_state_future = self._calc_alternate_state_future_step
-        elif opt_mode == 'course':
+        elif opt_mode == 'coarse':
+            assert pd.api.types.is_integer(cull_levels), 'cull_levels must be an integer'
+            assert pd.api.types.is_integer(dryoff_levels), 'dryoff_levels must be an integer'
+            self.cull_levels = int(cull_levels)
+            self.dryoff_levels = int(dryoff_levels)
             assert cull_dry_step is None
             self.cull_dry_step = None
-            self._calc_alternate_state_future = self._calc_alternate_state_course_opt
+            self._calc_alternate_state_future = self._calc_alternate_state_coarse_opt
         else:
-            raise ValueError(f'opt_mode must be one of: optimised, step, course, not {opt_mode}')
+            raise ValueError(f'opt_mode must be one of: optimised, step, coarse, not {opt_mode}')
 
         self.opt_mode = opt_mode
         self.ncore_opt = ncore_opt
@@ -829,7 +844,7 @@ class SimpleDairyModel(BaseSimpleFarmModel):
 
         return future_product, supplement_cost, alt_lact_fraction, alt_dry_fraction
 
-    def _calc_alternate_state_course_opt(self, month, i_month, remaining_months, current_state, use_pg, use_prod_price,
+    def _calc_alternate_state_coarse_opt(self, month, i_month, remaining_months, current_state, use_pg, use_prod_price,
                                          current_feed, use_feed_cost, cum_feed):
         (cull_idx, dryoff_idx, once_aday_idx, alt_lact_fraction, alt_dry_fraction,
          to_once_aday_idx, next_action) = self._prep_alt_data(month, current_state)
@@ -841,11 +856,10 @@ class SimpleDairyModel(BaseSimpleFarmModel):
         if cull_idx.any():
             # shape of the new data (alt_cull) is (nsims_with_cull, ncull_steps)
             max_cull = (self.lactating_cow_fraction + self.dry_cow_fraction - self.min_cow[month])[cull_idx]
-            ncull_steps = 10  # todo make a variable if this works
-            ncull = np.array([np.linspace(0, m, ncull_steps) for m in max_cull])
+            ncull = np.array([np.linspace(0, m, self.cull_levels) for m in max_cull])
             ncull_org = ncull.copy()  # for debugging
-            alt_cull_dry = np.repeat(self.dry_cow_fraction[cull_idx][:, np.newaxis], ncull_steps, axis=1)
-            alt_cull_lact = np.repeat(self.lactating_cow_fraction[cull_idx][:, np.newaxis], ncull_steps, axis=1)
+            alt_cull_dry = np.repeat(self.dry_cow_fraction[cull_idx][:, np.newaxis], self.cull_levels, axis=1)
+            alt_cull_lact = np.repeat(self.lactating_cow_fraction[cull_idx][:, np.newaxis], self.cull_levels, axis=1)
             t = np.maximum(0, alt_cull_dry - ncull)
             ncull = ncull - (alt_cull_dry - t)
             alt_cull_dry = t
@@ -854,7 +868,7 @@ class SimpleDairyModel(BaseSimpleFarmModel):
             alt_cull_lact = t0
             assert np.allclose(ncull, 0)
             assert ((alt_cull_lact + alt_cull_dry) >= self.min_cow[month]).all()
-            temp_future_product, temp_supplement_cost, temp_deficit_feed = self.__run_alt_course(
+            temp_future_product, temp_supplement_cost, temp_deficit_feed = self.__run_alt_coarse(
                 in_alt_lact=alt_cull_lact,
                 in_alt_dry=alt_cull_dry,
                 i_month=i_month,
@@ -867,7 +881,7 @@ class SimpleDairyModel(BaseSimpleFarmModel):
                 current_feed=current_feed[cull_idx],
                 in_feed_cost=use_feed_cost[:, cull_idx],
                 cum_feed=cum_feed[cull_idx],
-                steps=ncull_steps
+                steps=self.cull_levels
             )
 
             net = temp_future_product - temp_supplement_cost
@@ -880,13 +894,12 @@ class SimpleDairyModel(BaseSimpleFarmModel):
             out_alt_sup_cost[cull_idx] = temp_supplement_cost[d1_idx, best_idx]
 
         if dryoff_idx.any():
-            ndry_steps = 10  # todo make a variable if this works
-            ndry = np.array([np.linspace(0, m, ndry_steps) for m in self.lactating_cow_fraction[dryoff_idx]])
-            alt_dry_dry = np.repeat(self.dry_cow_fraction[dryoff_idx][:, np.newaxis], ndry_steps, axis=1)
-            alt_dry_lact = np.repeat(self.lactating_cow_fraction[dryoff_idx][:, np.newaxis], ndry_steps, axis=1)
+            ndry = np.array([np.linspace(0, m, self.dryoff_levels) for m in self.lactating_cow_fraction[dryoff_idx]])
+            alt_dry_dry = np.repeat(self.dry_cow_fraction[dryoff_idx][:, np.newaxis], self.dryoff_levels, axis=1)
+            alt_dry_lact = np.repeat(self.lactating_cow_fraction[dryoff_idx][:, np.newaxis], self.dryoff_levels, axis=1)
             alt_dry_dry += ndry
             alt_dry_lact -= ndry
-            temp_future_product, temp_supplement_cost, temp_deficit_feed = self.__run_alt_course(
+            temp_future_product, temp_supplement_cost, temp_deficit_feed = self.__run_alt_coarse(
                 in_alt_lact=alt_dry_lact,
                 in_alt_dry=alt_dry_dry,
                 i_month=i_month,
@@ -899,7 +912,7 @@ class SimpleDairyModel(BaseSimpleFarmModel):
                 current_feed=current_feed[dryoff_idx],
                 in_feed_cost=use_feed_cost[:, dryoff_idx],
                 cum_feed=cum_feed[dryoff_idx],
-                steps=ndry_steps
+                steps=self.dryoff_levels
             )
 
             net = temp_future_product - temp_supplement_cost
@@ -918,7 +931,7 @@ class SimpleDairyModel(BaseSimpleFarmModel):
 
         return out_alt_fut_prod, out_alt_sup_cost, next_action, alt_lact_fraction, alt_dry_fraction
 
-    def __run_alt_course(self, in_alt_lact, in_alt_dry, i_month, remaining_months, once_aday_idx, to_once_aday_idx,
+    def __run_alt_coarse(self, in_alt_lact, in_alt_dry, i_month, remaining_months, once_aday_idx, to_once_aday_idx,
                          in_pg, in_prod_price, current_state, current_feed, in_feed_cost, cum_feed, steps):
         assert in_alt_lact.shape == in_alt_dry.shape
         datashape = in_alt_lact.shape
@@ -1381,12 +1394,13 @@ class DairyModelWithSCScarcity(SimpleDairyModel):
     a version with an s-curve scarcity model requiring additional parameters s, a, b, c
     """
     s, a, b, c = None, None, None, None
-    alt_kwargs = ('peak_lact_cow_per_ha', 'cull_dry_step', 'ncore_opt', 'logging_level', 'opt_mode', 's', 'a', 'b', 'c')
+    alt_kwargs = ('peak_lact_cow_per_ha', 'cull_dry_step', 'ncore_opt', 'logging_level', 'opt_mode', 's', 'a', 'b', 'c',
+                  'cull_levels', 'dryoff_levels')
 
     def __init__(self, all_months, istate, pg, ifeed, imoney, sup_feed_cost, product_price, opt_mode='optimised',
                  monthly_input=True,
                  s=None, a=None, b=None, c=None, peak_lact_cow_per_ha=default_peak_cow, ncore_opt=1,
-                 logging_level=logging.CRITICAL, cull_dry_step=None):
+                 logging_level=logging.CRITICAL, cull_dry_step=None, cull_levels=None, dryoff_levels=None):
         """
 
         :param all_months: integer months, defines mon_len and time_len
@@ -1400,7 +1414,7 @@ class DairyModelWithSCScarcity(SimpleDairyModel):
 
         * 'optimised': use scipy.minimize_scalar to optimise the fraction of cows to cull dryoff at each decision point (cpu intensive, but most precise, low memory) cull_dry_step must be None
         * 'step': use a fixed step size for cull/dryoff decision (less cpu intensive, less precise, low memory) cull_dry_step must be set
-        * 'course': pick the best of an a. priori. number of cull/dryoff decisions (low cpu, high memory, moderate precision) cull_dry_step must be None # todo add new args for this mode add to alt_kwargs
+        * 'coarse': pick the best of an a. priori. number of cull/dryoff decisions (low cpu, high memory, moderate precision) cull_dry_step must be None
 
         :param monthly_input: if True, monthly input, if False, daily input (365 days per year)
         :param s: scarcity scurve scale - the maximum value of the curve (if s=1, the maximum value is 1)
@@ -1411,6 +1425,8 @@ class DairyModelWithSCScarcity(SimpleDairyModel):
         :param ncore_opt: number of cores to use for optimization of the cull/dryoff decision if ncore_opt==1, do not multiprocess, if ncore_opt > 1, use ncore_opt cores, if ncore_opt =None, use all available cores
         :param logging_level: logging level for the multiprocess component
         :param cull_dry_step: if None, use the optimized cull/dryoff decision, if float, use the cull/dryoff decision with a step size of cull_dry_step
+        :param cull_levels: if opt_mode='coarse' the number of equally spaced cull steps to make, otherwise must be None
+        :param dryoff_levels: if opt_mode='coarse' the number of equally spaced dryoff steps to make, otherwise must be None
         """
         assert all([e is not None for e in [s, a, b, c]]), 's, a, b, c must not be None'
         assert np.isfinite(np.array([s, a, b, c])).all(), 's, a, b, c must be finite'
@@ -1425,7 +1441,9 @@ class DairyModelWithSCScarcity(SimpleDairyModel):
                          opt_mode=opt_mode,
                          monthly_input=monthly_input,
                          peak_lact_cow_per_ha=peak_lact_cow_per_ha, ncore_opt=ncore_opt, logging_level=logging_level,
-                         cull_dry_step=cull_dry_step)
+                         cull_dry_step=cull_dry_step,
+                         cull_levels=cull_levels,
+                         dryoff_levels=dryoff_levels)
 
     def plot_scurve(self, plt_dnz_fs=False):
         """
