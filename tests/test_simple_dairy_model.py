@@ -63,7 +63,7 @@ class TestSimpleDairyModel(unittest.TestCase):
                                  monthly_input=True, cull_dry_step=0.01)
         model.run_model(printi=False)
 
-    def test_model_coarse_opt(self):  # todo
+    def test_model_coarse_opt(self):
         all_months = [(7 - 1 + i) % 12 + 1 for i in range(12)] * 3
         model = SimpleDairyModel(all_months,
                                  istate=[0, 0], pg=[0] * len(all_months), ifeed=[0, 0], imoney=[0, 0],
@@ -145,9 +145,8 @@ class TestSimpleDairyModel(unittest.TestCase):
         model.run_model(printi=False)
         if save_data:
             model.save_results_nc(save_path)
-        # todo compare outputs and then save the expected output
-        # expect = SimpleDairyModel.from_input_file(save_path)
-        # expect.output_eq(model, raise_on_diff=True)
+        expect = SimpleDairyModel.from_input_file(save_path)
+        expect.output_eq(model, raise_on_diff=True)
 
     def test_model_stepsize_data_SC(self):
         save_data = False
@@ -193,9 +192,8 @@ class TestSimpleDairyModel(unittest.TestCase):
         model.run_model(printi=False)
         if save_data:
             model.save_results_nc(save_path)
-        # todo check it runs then check output and save expected...
-        # expect = DairyModelWithSCScarcity.from_input_file(save_path)
-        # expect.output_eq(model, raise_on_diff=True)
+        expect = DairyModelWithSCScarcity.from_input_file(save_path)
+        expect.output_eq(model, raise_on_diff=True)
 
     def test_model_mp_no_mp_data(self):
         input_data = self.get_eyrewell_test_data()
