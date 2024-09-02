@@ -126,6 +126,7 @@ from copy import deepcopy
 import matplotlib.pyplot as plt
 from komanawa.simple_farm_model.run_multiprocess import run_multiprocess
 from komanawa.simple_farm_model.base_simple_farm_model import BaseSimpleFarmModel, month_len
+from komanawa.simple_farm_model.utils import leclose, geclose
 
 mj_per_kg_dm = 11  # MJ ME /kg DM
 monly_ms_prod = {  # kgMS per lactating cow per day
@@ -632,23 +633,23 @@ class SimpleDairyModel(BaseSimpleFarmModel):
 
         # check replacement fraction
         if month in [5, 6, 7, 8, 9, 10, 11]:
-            assert (self.replacement_fraction == self.replacement_rate).all(), (
+            assert np.allclose(self.replacement_fraction, self.replacement_rate), (
                 f'replacement fraction must be {self.replacement_rate=} in May, June, July, '
                 f'August, September, October, November. Got {self.replacement_fraction}')
         else:
-            assert (self.replacement_fraction == self.replacement_rate * 2).all(), (
+            assert np.allclose(self.replacement_fraction, self.replacement_rate * 2), (
                 f'replacement fraction must be {2 * self.replacement_rate=} in Dec, Jan, Feb, March, April. '
                 f'Got {self.replacement_fraction}')
 
-        assert (self.lactating_cow_fraction + self.dry_cow_fraction <= self.max_cow[month]).all(), (
+        assert leclose(self.lactating_cow_fraction + self.dry_cow_fraction, self.max_cow[month]).all(), (
             f'total cows must be <= 1, got {self.lactating_cow_fraction + self.dry_cow_fraction}')
 
-        assert (self.lactating_cow_fraction + self.dry_cow_fraction >= self.min_cow[month]).all(), (
+        assert geclose(self.lactating_cow_fraction + self.dry_cow_fraction, self.min_cow[month]).all(), (
             f'total cows must be >= {self.min_cow[month]}, '
             f'got {self.lactating_cow_fraction + self.dry_cow_fraction}')
 
         if month in [5, 6, 7]:
-            assert (self.lactating_cow_fraction == 0).all(), (
+            assert allclose(self.lactating_cow_fraction, 0), (
                 f'lactating cows must be 0 in May, June, July got {self.lactating_cow_fraction}')
 
         # cow loss per year applied pro-rata on the last day of the month.
@@ -724,12 +725,12 @@ class SimpleDairyModel(BaseSimpleFarmModel):
 
         # calculate marginal cost
         marginal_cost = cur_future_product - alt_fut_prod
-        assert ((marginal_cost >= 0) | np.isclose(marginal_cost,0)).all()
+        assert geclose(marginal_cost, 0).all()
         self.out_marginal_cost[i_month] = marginal_cost
 
         # calculate marginal benefit
         marginal_benefit = cur_sup_cost - alt_sup_cost
-        assert ((marginal_benefit >= 0) | np.isclose(marginal_benefit, 0)).all()
+        assert geclose(marginal_benefit, 0).all()
         self.out_marginal_benefit[i_month] = marginal_benefit
 
         return marginal_cost, marginal_benefit, next_action, alt_lact_fraction, alt_dry_fraction
@@ -819,8 +820,8 @@ class SimpleDairyModel(BaseSimpleFarmModel):
     def _run_alt(self, alt_lact_fraction, alt_dry_fraction, i_month, remaining_months, once_aday_idx, to_once_aday_idx,
                  use_pg,
                  use_prod_price, current_state, current_feed, use_feed_cost, cum_feed):
-        assert (alt_lact_fraction >= 0).all()
-        assert (alt_dry_fraction >= 0).all()
+        assert geclose(alt_lact_fraction, 0).all()
+        assert geclose(alt_dry_fraction, 0).all()
 
         future_product, supplement_cost, deficit_feed = self._calc_cost_production(
             i_month=i_month,
@@ -839,8 +840,8 @@ class SimpleDairyModel(BaseSimpleFarmModel):
         # feed requirements
         self.out_alt_fut_prod[i_month] = future_product
         self.out_cur_fut_feed_def[i_month] = deficit_feed
-        assert (alt_lact_fraction >= 0).all()
-        assert (alt_dry_fraction >= 0).all()
+        assert geclose(alt_lact_fraction, 0).all()
+        assert geclose(alt_dry_fraction, 0).all()
 
         return future_product, supplement_cost, alt_lact_fraction, alt_dry_fraction
 
@@ -867,7 +868,7 @@ class SimpleDairyModel(BaseSimpleFarmModel):
             ncull = ncull - (alt_cull_lact - t0)
             alt_cull_lact = t0
             assert np.allclose(ncull, 0)
-            assert ((alt_cull_lact + alt_cull_dry) >= self.min_cow[month]).all()
+            assert geclose((alt_cull_lact + alt_cull_dry), self.min_cow[month]).all()
             temp_future_product, temp_supplement_cost, temp_deficit_feed = self.__run_alt_coarse(
                 in_alt_lact=alt_cull_lact,
                 in_alt_dry=alt_cull_dry,
@@ -926,8 +927,8 @@ class SimpleDairyModel(BaseSimpleFarmModel):
 
         self.out_alt_fut_prod[i_month] = out_alt_fut_prod
         self.out_cur_fut_feed_def[i_month] = out_cur_fut_feed_def
-        assert (alt_lact_fraction >= 0).all()
-        assert (alt_dry_fraction >= 0).all()
+        assert geclose(alt_lact_fraction, 0).all()
+        assert geclose(alt_dry_fraction, 0).all()
 
         return out_alt_fut_prod, out_alt_sup_cost, next_action, alt_lact_fraction, alt_dry_fraction
 
@@ -1008,7 +1009,7 @@ class SimpleDairyModel(BaseSimpleFarmModel):
             alt_lact_fraction[cull_idx] = t = np.maximum(0, self.lactating_cow_fraction[cull_idx] - ncull[cull_idx])
             ncull[cull_idx] = ncull[cull_idx] - (self.lactating_cow_fraction[cull_idx] - t)
             assert np.allclose(ncull, 0)
-            assert all(alt_lact_fraction[cull_idx] + alt_dry_fraction[cull_idx] >= self.min_cow[month])
+            assert geclose(alt_lact_fraction[cull_idx] + alt_dry_fraction[cull_idx], self.min_cow[month]).all()
 
         if dryoff_idx.any():
             ndry = np.full(dryoff_idx.shape, 0)
@@ -1140,7 +1141,7 @@ class SimpleDairyModel(BaseSimpleFarmModel):
             out[no_change_idx] = 0
         else:
             raise ValueError('should not get here')
-        assert out.min() >= 0, f'out must be >= 0, got {out.min()}'
+        assert geclose(out.min(), 0), f'out must be >= 0, got {out.min()}'
         return out
 
     def calc_next_state_quant_not_1aday(self, month, current_state):
@@ -1160,7 +1161,7 @@ class SimpleDairyModel(BaseSimpleFarmModel):
             no_change_idx = (cow_nums <= (self.min_cow[month] * 1.01)) & (self.lactating_cow_fraction <= 0)
             out[no_change_idx] = 0
 
-        assert out.min() >= 0, f'out must be >= 0, got {out.min()}'
+        assert geclose(out.min(), 0), f'out must be >= 0, got {out.min()}'
         return out
 
     def _cull_opt_mp(self, kwargs):
@@ -1339,7 +1340,7 @@ class SimpleDairyModel(BaseSimpleFarmModel):
             deficit_feed[i] = deficit
             current_stored_feed -= feed_need - deficit
 
-        assert (deficit_feed >= 0).all()
+        assert geclose(deficit_feed, 0).all()
 
         supplement_needed = deficit_feed / self.supplemental_efficiency
 
@@ -1487,8 +1488,8 @@ class DairyModelWithSCScarcity(SimpleDairyModel):
                                                               np.zeros((1, nsims))), axis=0),
                                               axis=0)
         cum_feed_per = (start_cum_ann_feed_import + new_feed.cumsum(axis=0)) / self.get_annual_feed() * 100
-        assert cum_feed_per.min() >= 0, f'{cum_feed_per.min()}'
-        assert cum_feed_per.max() <= 105, f'{cum_feed_per.max()}'  # 105 to allow for rounding errors
+        assert geclose(cum_feed_per.min(), 0), f'{cum_feed_per.min()}'
+        assert leclose(cum_feed_per.max(), 105), f'{cum_feed_per.max()}'  # 105 to allow for rounding errors
         cum_feed_per[cum_feed_per > 100] = 100
         cost_per_mj = s_curve(
             cum_feed_per, s=self.s, a=self.a, b=self.b,
