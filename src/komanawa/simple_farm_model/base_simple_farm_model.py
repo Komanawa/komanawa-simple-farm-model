@@ -375,7 +375,7 @@ class BaseSimpleFarmModel(object):
 
             storage_cost = self.homegrown_storage_cost * surplus_homegrown
             delta_store_feed = surplus_homegrown * self.homegrown_store_efficiency
-            current_money += storage_cost
+            current_money += -1 * storage_cost
             current_feed += delta_store_feed
 
             # supplement feed needed
@@ -510,6 +510,14 @@ class BaseSimpleFarmModel(object):
         for attr in self.required_class_attrs:
             assert hasattr(self, attr), f'{attr} must be set in subclass'
             assert getattr(self, attr) is not None, f'{attr} must be set in subclass'
+
+        assert self.homegrown_storage_cost >= 0, 'homegrown_storage_cost must be positive or zero'
+        assert self.homegrown_efficiency >= 0, 'homegrown_efficiency must be positive or zero'
+        assert self.supplemental_efficiency >= 0, 'supplemental_efficiency must be positive or zero'
+        assert self.sup_feedout_cost >= 0, 'sup_feedout_cost must be positive or zero'
+
+
+
 
     def save_results_nc(self, outpath):
         """
