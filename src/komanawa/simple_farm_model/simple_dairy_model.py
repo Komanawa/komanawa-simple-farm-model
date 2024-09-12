@@ -129,12 +129,12 @@ from komanawa.simple_farm_model.base_simple_farm_model import BaseSimpleFarmMode
 from komanawa.simple_farm_model.utils import leclose, geclose
 
 mj_per_kg_dm = 11  # MJ ME /kg DM
-monly_ms_prod = {  # kgMS per lactating cow per day
+monly_ms_prod = {  # kgMS per lactating cow per month
     1: 57.47,
     2: 49.10,
     3: 50.13,
     4: 45.89,
-    5: 0,  # based on discussions with andrew curtis, not worth including may prod. prev.45.42,
+    5: 0,  # based on discussions with andrew curtis, not worth including may prod. prev. 45.42, # todo check this
     6: 0,  # yep
     7: 0,  # not really much lactation in July, so we'll assume 0
     8: 56.92,
@@ -161,7 +161,7 @@ dry_cow_feed = {  # kgDM per cow per day
 }
 dry_cow_feed = {k: v * mj_per_kg_dm for k, v in dry_cow_feed.items()}
 replacement_feed = {m: 6.4 * mj_per_kg_dm for m in range(1, 13)}
-lactating_feed = {k: v * 123.19 for k, v in daily_ms_prod.items()}  # assume 123.19 MJ ME/kg DM
+lactating_feed = {k: v * 123.19 for k, v in daily_ms_prod.items()}  # assume 123.19 MJ ME/kg MS
 
 default_peak_cow = (3.48 + 2.82) / 2 / 1.44  # (dairy platform density + replacement density) / 2 / 1.44
 
@@ -185,7 +185,7 @@ class SimpleDairyModel(BaseSimpleFarmModel):
     homegrown_efficiency = 0.8
     supplemental_efficiency = 0.9
     sup_feedout_cost = 120 / 1000 / mj_per_kg_dm  # 120/ton DM --> convert to ME, MJ
-    homegrown_store_efficiency = 1
+    homegrown_store_efficiency = 1  # todo possibly set this lower...
     homegrown_storage_cost = 175 / 1000 / mj_per_kg_dm  # 175/ton/DM --> convert to ME, MJ
     one_a_daymilk_production_fraction = 1 - 0.13  # 13% less milk production on 1-a-day
     _start_lactating_cow_fraction = 0  # % of cows are lactating on day 1  (july)#
