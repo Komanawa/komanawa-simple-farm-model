@@ -109,10 +109,10 @@ The model assesses the alternate step change in the following order:
 1.  Before end of February (months 8-2) go to:
     1. this cull up to the replacement rate (no on-going feed requirement)
     2. Post this dry-off (significantly reduced feed demand).
-2. After end of Feb, but before end of April (months 3-4) go to:
+2. After end of Feb, but before end of may (months 3-5) go to:
     1. Cull up to the replacement rate
     2. dry-off stock
-3. For months 5, 6, 7, all cows are dried off regardless so
+3. For months 6, 7, all cows are dried off regardless so
     1. No change
 
 The amount of cows to cull/dry off can either be optimised (cull_dry_step=None) or set to a fixed step size (cull_dry_step=0.01).  The optimisation is done using the scipy minimize_scalar function. Note that the optimisation process significantly increases the runtime of the model.
@@ -134,7 +134,7 @@ monly_ms_prod = {  # kgMS per lactating cow per month
     2: 49.10,
     3: 50.13,
     4: 45.89,
-    5: 0,  # based on discussions with andrew curtis, not worth including may prod. prev. 45.42, # todo check this
+    5: 45.42, # todo iplmeent may milking
     6: 0,  # yep
     7: 0,  # not really much lactation in July, so we'll assume 0
     8: 56.92,
@@ -185,7 +185,7 @@ class SimpleDairyModel(BaseSimpleFarmModel):
     homegrown_efficiency = 0.8
     supplemental_efficiency = 0.9
     sup_feedout_cost = 120 / 1000 / mj_per_kg_dm  # 120/ton DM --> convert to ME, MJ
-    homegrown_store_efficiency = 1  # todo possibly set this lower...
+    homegrown_store_efficiency = 0.75
     homegrown_storage_cost = 175 / 1000 / mj_per_kg_dm  # 175/ton/DM --> convert to ME, MJ
     one_a_daymilk_production_fraction = 1 - 0.13  # 13% less milk production on 1-a-day
     _start_lactating_cow_fraction = 0  # % of cows are lactating on day 1  (july)#
@@ -280,7 +280,6 @@ class SimpleDairyModel(BaseSimpleFarmModel):
         self._start_replacement_fraction = self.replacement_rate
         # set expected minimum of dry/lactating cow fraction
         self.min_cow = {  # the maximum cull level for each month
-            5: 1 + self.dry_cow_loss / 12 * 2,
             6: 1 + self.dry_cow_loss / 12 * 1,
             7: 1,
             8: 1 - self.replacement_rate + self.dry_cow_loss / 12 * 12,
@@ -292,10 +291,10 @@ class SimpleDairyModel(BaseSimpleFarmModel):
             2: 1 - self.replacement_rate + self.dry_cow_loss / 12 * 6,
             3: 1 - self.replacement_rate + self.dry_cow_loss / 12 * 5,
             4: 1 - self.replacement_rate + self.dry_cow_loss / 12 * 4,
+            5: 1 - self.replacement_rate + self.dry_cow_loss / 12 * 3,
         }
 
         self.max_cow = {
-            5: 1 + self.dry_cow_loss / 12 * 3,
             6: 1 + self.dry_cow_loss / 12 * 2,
             7: 1 + self.dry_cow_loss / 12,
             8: 1,
@@ -307,6 +306,7 @@ class SimpleDairyModel(BaseSimpleFarmModel):
             2: 1,
             3: 1,
             4: 1,
+            5: 1,
         }
         # add more input/outputs
 
@@ -596,7 +596,7 @@ class SimpleDairyModel(BaseSimpleFarmModel):
             self.feed_scarcity_cost[[i_month], :]), axis=0), axis=0)
         new_state = np.zeros(self.nsims) + current_state
 
-        if (self.all_days[i_month] in self.state_change_days) and (month not in [5, 6, 7]):
+        if (self.all_days[i_month] in self.state_change_days) and (month not in [6, 7]):
             # allow state change
             (marginal_cost, marginal_benefit, next_action, alt_lact_fraction,
              alt_dry_fraction) = self.calc_marginal_cost_benefit(i_month, month, current_state, current_feed)
@@ -632,13 +632,13 @@ class SimpleDairyModel(BaseSimpleFarmModel):
         self.out_replacement_fraction[i_month] = self.replacement_fraction
 
         # check replacement fraction
-        if month in [5, 6, 7, 8, 9, 10, 11]:
+        if month in [6, 7, 8, 9, 10, 11]:
             assert np.allclose(self.replacement_fraction, self.replacement_rate), (
-                f'replacement fraction must be {self.replacement_rate=} in May, June, July, '
+                f'replacement fraction must be {self.replacement_rate=} in June, July, '
                 f'August, September, October, November. Got {self.replacement_fraction}')
         else:
             assert np.allclose(self.replacement_fraction, self.replacement_rate * 2), (
-                f'replacement fraction must be {2 * self.replacement_rate=} in Dec, Jan, Feb, March, April. '
+                f'replacement fraction must be {2 * self.replacement_rate=} in Dec, Jan, Feb, March, April, May. '
                 f'Got {self.replacement_fraction}')
 
         assert leclose(self.lactating_cow_fraction + self.dry_cow_fraction, self.max_cow[month]).all(), (
@@ -648,7 +648,7 @@ class SimpleDairyModel(BaseSimpleFarmModel):
             f'total cows must be >= {self.min_cow[month]}, '
             f'got {self.lactating_cow_fraction + self.dry_cow_fraction}')
 
-        if month in [5, 6, 7]:
+        if month in [6, 7]:
             assert allclose(self.lactating_cow_fraction, 0), (
                 f'lactating cows must be 0 in May, June, July got {self.lactating_cow_fraction}')
 
@@ -669,10 +669,12 @@ class SimpleDairyModel(BaseSimpleFarmModel):
         if month == 11 and day == month_len[11]:
             self.replacement_fraction = self.replacement_fraction + self.replacement_rate
 
-        # dryoff and cull cows to replacement rate at end of April
-        if month == 4 and day == month_len[4]:
+
+
+        # dryoff and cull cows to replacement rate at end of May
+        if month == 5 and day == month_len[5]:
             self.replacement_fraction = np.zeros(self.nsims) + self.replacement_rate
-            self.dry_cow_fraction = np.zeros(self.nsims) + self.max_cow[5]
+            self.dry_cow_fraction = np.zeros(self.nsims) + self.max_cow[6]
             self.lactating_cow_fraction = np.zeros(self.nsims)
 
         return current_state, current_feed, current_money
@@ -1106,7 +1108,7 @@ class SimpleDairyModel(BaseSimpleFarmModel):
         """
         # can do one of once a day, cull, or dryoff not multiple
 
-        if month in [5, 6, 7]:
+        if month in [6, 7]:
             out = np.zeros(self.nsims, dtype=int)
         elif month in [8, 9, 10, 11, 12, 1, 2]:
             out = np.zeros(self.nsims, dtype=int) - 1
@@ -1124,7 +1126,7 @@ class SimpleDairyModel(BaseSimpleFarmModel):
             no_change_idx = (cow_nums <= (self.min_cow[month] * 1.01)) & (self.lactating_cow_fraction <= 0) & once_idx
             out[no_change_idx] = 0
 
-        elif month in [3, 4]:
+        elif month in [3, 4, 5]:
             # If feed runs low after end of February:
             # 1. Cull up to the replacement rate
             # 2. Post this go to once-a-day milking
@@ -1145,7 +1147,7 @@ class SimpleDairyModel(BaseSimpleFarmModel):
         return out
 
     def calc_next_state_quant_not_1aday(self, month, current_state):
-        if month in [5, 6, 7]:
+        if month in [6, 7]:
             out = np.zeros(self.nsims, dtype=int)
         else:
             out = np.zeros(self.nsims, dtype=int) - 1
@@ -1289,14 +1291,14 @@ class SimpleDairyModel(BaseSimpleFarmModel):
             idx = remaining_months == m
             lc_with_loss = lact_fraction * (1 - self.lactating_cow_loss / 12 * i)
             dc_with_loss = dry_fraction * (1 - self.dry_cow_loss / 12 * i)
-            if m in [5, 6, 7]:
+            if m in [6, 7]:
                 future_lactating_cow_fraction[idx] = 0
                 future_dry_cow_fraction[idx] = lc_with_loss + dc_with_loss
             else:
                 future_lactating_cow_fraction[idx] = lc_with_loss
                 future_dry_cow_fraction[idx] = dc_with_loss
 
-            if m in [12, 1, 2, 3, 4]:
+            if m in [12, 1, 2, 3, 4, 5]:
                 future_replacement_fraction[idx] = 2 * self.replacement_rate
             else:
                 future_replacement_fraction[idx] = self.replacement_rate
@@ -1360,7 +1362,7 @@ class SimpleDairyModel(BaseSimpleFarmModel):
 
     def get_annual_feed(self):
         """
-        get the annual feed needed for each farm
+        get the annual feed needed for each farm (does not include any feed inefficiencies)
 
         :return: np.ndarray shape (nsims,)
         """
@@ -1487,9 +1489,10 @@ class DairyModelWithSCScarcity(SimpleDairyModel):
         start_cum_ann_feed_import = np.nanmax(np.concatenate((start_cum_ann_feed_import[np.newaxis],
                                                               np.zeros((1, nsims))), axis=0),
                                               axis=0)
-        cum_feed_per = (start_cum_ann_feed_import + new_feed.cumsum(axis=0)) / self.get_annual_feed() * 100
+        cum_feed_per = ((start_cum_ann_feed_import + new_feed.cumsum(axis=0))
+                        / (self.get_annual_feed()/ self.supplemental_efficiency) * 100)
         assert geclose(cum_feed_per.min(), 0), f'{cum_feed_per.min()}'
-        assert leclose(cum_feed_per.max(), 105), f'{cum_feed_per.max()}'  # 105 to allow for rounding errors
+        assert leclose(cum_feed_per.max(), 100), f'{cum_feed_per.max()}'  # 100 to allow for rounding errors
         cum_feed_per[cum_feed_per > 100] = 100
         cost_per_mj = s_curve(
             cum_feed_per, s=self.s, a=self.a, b=self.b,

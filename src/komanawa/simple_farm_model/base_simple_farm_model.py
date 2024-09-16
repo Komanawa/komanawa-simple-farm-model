@@ -516,9 +516,6 @@ class BaseSimpleFarmModel(object):
         assert self.supplemental_efficiency >= 0, 'supplemental_efficiency must be positive or zero'
         assert self.sup_feedout_cost >= 0, 'sup_feedout_cost must be positive or zero'
 
-
-
-
     def save_results_nc(self, outpath):
         """
         save results to netcdf file
@@ -634,7 +631,7 @@ class BaseSimpleFarmModel(object):
             outdata.to_csv(outdir.joinpath(f'sim_{sim}.csv'), index=False)
 
     def plot_results(self, *ys, x='time', sims=None, mult_as_lines=True, twin_axs=False, figsize=(10, 8),
-                     start_year=2000, bins=20, **kwargs):
+                     start_year=2000, bins=20, sub_model=None, **kwargs):
         """
         plot results
 
@@ -664,9 +661,17 @@ class BaseSimpleFarmModel(object):
         :param twin_axs: bool if True, plot each y on twin axis, if False, plot on subplots
         :param start_year: the year to start plotting from (default 2000) only affects the transition from year 1, year2, etc. to datetime
         :param bins: number of bins for mult_as_lines=False and x!='time'
+        :param sub_model: None or another model to plot the difference between the two models (self - sub_model)
         :param kwargs: passed to plt.plot if and only if mult_as_lines=True
         :return:
         """
+        if sub_model is not None:
+            assert x == 'time', 'sub_model only implemented for x="time"'
+            try:
+                self.output_eq(sub_model, dimensionality_only=True)
+            except AssertionError as e:
+                raise AssertionError('models must have the same dimensions') from e
+
         if not mult_as_lines:
             assert len(kwargs) == 0, f'kwargs only used when mult_as_lines=True, got {kwargs=}'
 
@@ -726,7 +731,7 @@ class BaseSimpleFarmModel(object):
             linestyles = ['solid'] * len(ys)
 
         ycolors = get_colors(ys)
-
+        ylab_adder = ''
         # plot data
         for y, ax, ls, yc in zip(ys, axs, linestyles, ycolors):
 
@@ -745,9 +750,17 @@ class BaseSimpleFarmModel(object):
                         label = f'{baselab}, {y}'
                     else:
                         label = baselab
-                    ax.plot(use_x[idx], getattr(self, self.obj_dict[y])[:, sim][idx], label=label, ls=ls, c=c, **kwargs)
+                    yplot = getattr(self, self.obj_dict[y])[:, sim][idx]
+                    if sub_model is not None:
+                        ylab_adder = ' self - sub'
+                        yplot -= getattr(sub_model, sub_model.obj_dict[y])[:, sim][idx]
+                    ax.plot(use_x[idx], yplot, label=label, ls=ls, c=c, **kwargs)
             else:
+
                 usey = getattr(self, self.obj_dict[y])[:, sims]
+                if sub_model is not None:
+                    ylab_adder = ' self - sub'
+                    usey = usey - getattr(sub_model, sub_model.obj_dict[y])[:, sims]
                 if x == 'time':
                     use_x = base_xtime
                     marker = None
@@ -773,7 +786,7 @@ class BaseSimpleFarmModel(object):
                 ax.fill_between(use_x, np.nanpercentile(usey, 5, axis=1), np.nanpercentile(usey, 95, axis=1),
                                 label='5-95%', color=yc, alpha=0.25)
 
-            ax.set_ylabel(self.long_name_dict[y])
+            ax.set_ylabel(self.long_name_dict[y] + ylab_adder)
         if twin_axs:
             ax = axs[0]
         else:
@@ -840,30 +853,49 @@ class BaseSimpleFarmModel(object):
         raise NotImplementedError('must be set in a child class')
         return next_state
 
-    def output_eq(self, other, raise_on_diff=False, skip_alt_kwargs=None):
+    def output_eq(self, other, raise_on_diff=False, skip_alt_kwargs=None, compare_idx=None,
+                  dimensionality_only=False):
         """
         check if two models are equal
 
         :param other: Other model
         :param raise_on_diff: bool if True raise an error if the models are different, if False just return False
         :param skip_alt_kwargs: None or iterable of alt_kwargs to skip testing
+        :param compare_idx: None or boolean or int index to compare only a subset of the data.  shape=(time, nsims)
+        :param dimensionality_only: bool if True only check the dimensionality of the model, if False check all values
         :return:
         """
+        if compare_idx is not None:
+            assert isinstance(compare_idx, np.ndarray)
+            assert compare_idx.shape == self.model_shape or compare_idx.shape == (self.model_shape[0],), (
+                f'compare_idx must be shape {self.model_shape} or {self.model_shape[0], 1}, got {compare_idx.shape}')
+            if compare_idx.ndim == 1:
+                compare_idx = np.repeat(compare_idx[:, np.newaxis], self.nsims, axis=1)
+
+        if not np.allclose(self.all_months, other.all_months):
+            if raise_on_diff:
+                raise AssertionError(f'all_months must be the same')
+            return False
+
         if skip_alt_kwargs is None:
             skip_alt_kwargs = []
         skip_alt_kwargs = np.atleast_1d(skip_alt_kwargs)
         if type(self) != type(other):
             if raise_on_diff:
-                raise ValueError(f'must be same type, got {type(self)} and {type(other)}')
+                raise AssertionError(f'must be same type, got {type(self)} and {type(other)}')
             return False
         if not self._run and other._run:
             if raise_on_diff:
-                raise ValueError(f'at least one model not run: {self._run=} {other._run=}')
+                raise AssertionError(f'at least one model not run: {self._run=} {other._run=}')
             return False
         if self.model_shape != other.model_shape:
             if raise_on_diff:
-                raise ValueError(f'model_shape must be the same, got {self.model_shape} and {other.model_shape}')
+                raise AssertionError(f'model_shape must be the same, got {self.model_shape} and {other.model_shape}')
             return False
+
+        if dimensionality_only:
+            return True
+
         # check the alt kwargs
         if self.alt_kwargs is not None:
             if not hasattr(other, 'alt_kwargs'):
@@ -891,7 +923,16 @@ class BaseSimpleFarmModel(object):
             if not hasattr(other, v):
                 missing.append(v)
                 continue
-            if not np.allclose(getattr(self, v), getattr(other, v), equal_nan=True):
+            temp_self = getattr(self, v)
+            temp_other = getattr(other, v)
+            if compare_idx is not None:
+                if temp_self.ndim == 1:
+                    temp_self = temp_self[compare_idx[:, 0]]
+                    temp_other = temp_other[compare_idx[:, 0]]
+                else:
+                    temp_self = temp_self[compare_idx]
+                    temp_other = temp_other[compare_idx]
+            if not np.allclose(temp_self, temp_other, equal_nan=True):
                 different.append(v)
         if len(missing) > 0:
             if raise_on_diff:
