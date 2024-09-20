@@ -134,7 +134,7 @@ monly_ms_prod = {  # kgMS per lactating cow per month
     2: 49.10,
     3: 50.13,
     4: 45.89,
-    5: 45.42, # todo iplmeent may milking
+    5: 45.42,
     6: 0,  # yep
     7: 0,  # not really much lactation in July, so we'll assume 0
     8: 56.92,

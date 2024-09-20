@@ -10,8 +10,6 @@ from komanawa.simple_farm_model import default_peak_cow
 import numpy as np
 
 
-# todo run this...
-
 def speed_test(savedir=None):
     steps = [None, 0.05, 0.1, 0.15, 0.2, 5, 10, 15, 20, 30, 50]
     # note that for coarse mode, the step is used as the cull/dryoff level arg
