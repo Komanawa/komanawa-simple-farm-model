@@ -163,7 +163,8 @@ dry_cow_feed = {k: v * mj_per_kg_dm for k, v in dry_cow_feed.items()}
 replacement_feed = {m: 6.4 * mj_per_kg_dm for m in range(1, 13)}
 lactating_feed = {k: v * 123.19 for k, v in daily_ms_prod.items()}  # assume 123.19 MJ ME/kg MS
 
-default_peak_cow = (3.48 + 2.82) / 2 / 1.44  # (dairy platform density + replacement density) / 2 / 1.44
+# (dairy platform density/ (1ha + area for 44% replacements at 2.82 cows/ha)
+default_peak_cow = 3.48/ (1 + (3.48 * 0.44 / 2.82))
 
 
 class SimpleDairyModel(BaseSimpleFarmModel):
