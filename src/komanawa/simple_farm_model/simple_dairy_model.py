@@ -1449,7 +1449,7 @@ class DairyModelWithSCScarcity(SimpleDairyModel):
                          cull_levels=cull_levels,
                          dryoff_levels=dryoff_levels)
 
-    def plot_scurve(self, plt_dnz_fs=False):
+    def plot_scurve(self, plt_dnz_fs=False, figsize=(10, 10)):
         """
         plot the s-curve
         :param plt_dnz_fs: bool if true plot the dairy nz farm system boundaries.
@@ -1458,7 +1458,7 @@ class DairyModelWithSCScarcity(SimpleDairyModel):
 
         x = np.linspace(0, 100, 100)
         y = s_curve(x, s=self.s, a=self.a, b=self.b, c=self.c)
-        fig, ax = plt.subplots(figsize=(10, 10))
+        fig, ax = plt.subplots(figsize=figsize)
         ax.plot(x, y)
         if plt_dnz_fs:
             ax.fill_between([1, 10], [0, 0], [1, 1], transform=ax.get_xaxis_transform(), color='r', alpha=0.1,
