@@ -143,7 +143,7 @@ monly_ms_prod = {  # kgMS per lactating cow per month
     11: 61.57,
     12: 60.67
 }
-daily_ms_prod = {m: v / month_len[m] for m, v in monly_ms_prod.items()}
+daily_ms_prod = {m: v / month_len[m] for m, v in monly_ms_prod.items()}  # 559.61 kgMS per lactating cow per year
 
 dry_cow_feed = {  # kgDM per cow per day
     7: 9.3,
