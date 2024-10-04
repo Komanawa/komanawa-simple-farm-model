@@ -164,7 +164,7 @@ replacement_feed = {m: 6.4 * mj_per_kg_dm for m in range(1, 13)}
 lactating_feed = {k: v * 123.19 for k, v in daily_ms_prod.items()}  # assume 123.19 MJ ME/kg MS
 
 # (dairy platform density/ (1ha + area for 44% replacements at 2.82 cows/ha)
-default_peak_cow = 3.48/ (1 + (3.48 * 0.44 / 2.82))
+default_peak_cow = 3.48 / (1 + (3.48 * 0.44 / 2.82))
 
 
 class SimpleDairyModel(BaseSimpleFarmModel):
@@ -199,20 +199,21 @@ class SimpleDairyModel(BaseSimpleFarmModel):
     feed_per_cow_dry = deepcopy(dry_cow_feed)
     feed_per_cow_replacement = deepcopy(replacement_feed)
     feed_fraction_1aday = 0.87  # 13% less feed required on 1-a-day
-    feed_store_trigger = None  # set internally to two weeks of average feed requirements
     marginal_benefit_from_true = True  # calculate marginal benefit from true prices, if False, use average price
     marginal_cost_from_true = True  # calculate marginal benefit from true prices, if False, use average price
     lactating_cow_loss = 0.021  # 2.1% loss per year
     replacement_cow_loss = 0  # simplifying assumption, no loss of replacements
     dry_cow_loss = 0.021  # 2.1% loss per year
+    feed_store_trigger = 1000
     allow_1aday = False  # allow for 1 a day milking, abandoning... drying off some small percentage of cows also accomplishes the same thing given we don't have any running costs.
     alt_kwargs = (
-    'peak_lact_cow_per_ha', 'cull_dry_step', 'ncore_opt', 'logging_level', 'opt_mode', 'cull_levels', 'dryoff_levels')
+        'peak_lact_cow_per_ha', 'cull_dry_step', 'ncore_opt', 'logging_level', 'opt_mode', 'cull_levels',
+        'dryoff_levels')
 
     def __init__(self, all_months, istate, pg, ifeed, imoney, sup_feed_cost, product_price,
                  opt_mode='optimised', monthly_input=True,
                  peak_lact_cow_per_ha=default_peak_cow, ncore_opt=1, logging_level=logging.CRITICAL,
-                 cull_dry_step=None, cull_levels=None, dryoff_levels=None):
+                 cull_dry_step=None, cull_levels=None, dryoff_levels=None, allow_mitigation_delay=False):
         """
 
         :param all_months: integer months, defines mon_len and time_len
@@ -235,7 +236,9 @@ class SimpleDairyModel(BaseSimpleFarmModel):
         :param cull_dry_step: if None, use the optimized cull/dryoff decision, if float, use the cull/dryoff decision with a step size of cull_dry_step
         :param cull_levels: if opt_mode='coarse' the number of equally spaced cull steps to make, otherwise must be None
         :param dryoff_levels: if opt_mode='coarse' the number of equally spaced dryoff steps to make, otherwise must be None
+        :param allow_mitigation_delay: if True, allow for a delay in the implementation of the cull/dryoff decision, if False, implement the cull/dryoff decision immediately. In practice this takes the "best" state and asks if delaying the application of the best state for a decision time step is more financially beneficial as compared to immediate implementation.
         """
+        self.allow_mitigation_delay = allow_mitigation_delay
         assert opt_mode in ('optimised', 'step', 'coarse'), 'opt_mode must be one of: optimised, step, coarse'
         if opt_mode == 'optimised':
             assert cull_dry_step is None
@@ -326,7 +329,6 @@ class SimpleDairyModel(BaseSimpleFarmModel):
         self.set_mean_sup_cost(sup_dict=None, sup_cost_raw=self.sup_feed_cost, months=self.all_months)
         self.set_mean_product_price(prod_price_dict=None, prod_price_raw=self.product_price, months=self.all_months)
 
-        self.feed_store_trigger = 1000
 
     def _update_object_dict(self):
         super()._update_object_dict()
@@ -343,6 +345,7 @@ class SimpleDairyModel(BaseSimpleFarmModel):
         self.obj_dict['cur_fut_feed_def'] = 'out_cur_fut_feed_def'
         self.obj_dict['marginal_benefit'] = 'out_marginal_benefit'
         self.obj_dict['feed_scarcity_cost'] = 'feed_scarcity_cost'
+        self.obj_dict['mitigation_delayed'] = 'out_mitigation_delayed'
 
         self.long_name_dict['lactating_cow_fraction'] = 'Lactating Cow Fraction (fraction, 0-1)'
         self.long_name_dict['dry_cow_fraction'] = 'Dry Cow Fraction (fraction, 0-1)'
@@ -357,6 +360,7 @@ class SimpleDairyModel(BaseSimpleFarmModel):
         self.long_name_dict['cur_fut_feed_def'] = 'Current Future Feed Deficit for MC/MB (MJ)'
         self.long_name_dict['marginal_benefit'] = 'Marginal Benefit for MC/MB ($)'
         self.long_name_dict['feed_scarcity_cost'] = 'Feed Scarcity Cost ($)'
+        self.long_name_dict['mitigation_delayed'] = 'Mitigation Delayed (bool) to next step'
 
     def _set_arrays(self, all_months, istate, ifeed, imoney, pg, sup_feed_cost, product_price, monthly_input):
         super()._set_arrays(all_months, istate, ifeed, imoney, pg, sup_feed_cost, product_price, monthly_input)
@@ -367,6 +371,7 @@ class SimpleDairyModel(BaseSimpleFarmModel):
         self.replacement_fraction = np.zeros(self.nsims) + self._start_replacement_fraction
 
         # make outcow buckets
+        self.out_mitigation_delayed = np.zeros(self.model_shape, dtype=bool)
         self.out_lactating_cow_fraction = np.zeros(self.model_shape)
         self.out_dry_cow_fraction = np.zeros(self.model_shape)
         self.out_replacement_fraction = np.zeros(self.model_shape)
@@ -600,8 +605,9 @@ class SimpleDairyModel(BaseSimpleFarmModel):
         if (self.all_days[i_month] in self.state_change_days) and (month not in [6, 7]):
             # allow state change
             (marginal_cost, marginal_benefit, next_action, alt_lact_fraction,
-             alt_dry_fraction) = self.calc_marginal_cost_benefit(i_month, month, current_state, current_feed)
-            idx = marginal_cost < marginal_benefit
+             alt_dry_fraction, delayed_mitigation) = self.calc_marginal_cost_benefit(i_month, month, current_state,
+                                                                                     current_feed)
+            idx = (marginal_cost < marginal_benefit) & ~delayed_mitigation
             self.dry_cow_fraction[idx] = alt_dry_fraction[idx]
             self.lactating_cow_fraction[idx] = alt_lact_fraction[idx]
             new_once_aday = next_action == 3
@@ -670,8 +676,6 @@ class SimpleDairyModel(BaseSimpleFarmModel):
         if month == 11 and day == month_len[11]:
             self.replacement_fraction = self.replacement_fraction + self.replacement_rate
 
-
-
         # dryoff and cull cows to replacement rate at end of May
         if month == 5 and day == month_len[5]:
             self.replacement_fraction = np.zeros(self.nsims) + self.replacement_rate
@@ -726,6 +730,52 @@ class SimpleDairyModel(BaseSimpleFarmModel):
             cum_feed=self.cum_feed_import[i_month - 1]
         )
 
+        if self.allow_mitigation_delay:
+            # estimate delay to next decision point
+            delay = 1
+            i0_month = i_month + 1
+            while (self.all_days[i0_month] not in self.state_change_days):
+                if self.all_months[i0_month] == 6 or i0_month == len(self.all_months) - 1:
+                    delay = 0
+                    break
+                i0_month += 1
+                delay += 1
+
+            if delay == 0:
+                delayed_mitigation = np.zeros(self.nsims, dtype=bool)
+            else:
+                once_aday_idx = np.in1d(current_state, self.milk_1_aday_states)
+                to_once_aday_idx = next_action == 3
+                delay_future_product, delay_supplement_cost, delay_deficit_feed = self._calc_cost_production(
+                    i_month=i_month,
+                    remaining_months=remaining_months,
+                    lact_fraction=alt_lact_fraction,
+                    dry_fraction=alt_dry_fraction,
+                    once_aday_idx=once_aday_idx | to_once_aday_idx,
+                    use_prod_price=use_product_price,
+                    use_pg=use_pg,
+                    current_state=current_state,
+                    current_feed=current_feed,
+                    use_feed_cost=use_feed_cost,
+                    current_cum_import=self.cum_feed_import[i_month - 1],
+                    nsims=self.nsims,
+                    delay=delay)  # todo add a delay to the mitigation
+
+                # todo something is wrong... getting less feed deficit with time.... uggg
+
+                assert geclose(delay_future_product, 0).all()
+                assert geclose(delay_supplement_cost, 0).all()
+                temp = np.array([
+                    cur_future_product - cur_sup_cost,
+                    alt_fut_prod - alt_sup_cost,
+                    delay_future_product - delay_supplement_cost,
+                ])
+                delayed_mitigation = np.argmax(temp, axis=0) == 2
+                # todo check!
+                # todo write tests once I'm happy with this...
+        else:
+            delayed_mitigation = np.zeros(self.nsims, dtype=bool)
+
         # calculate marginal cost
         marginal_cost = cur_future_product - alt_fut_prod
         assert geclose(marginal_cost, 0).all()
@@ -736,7 +786,7 @@ class SimpleDairyModel(BaseSimpleFarmModel):
         assert geclose(marginal_benefit, 0).all()
         self.out_marginal_benefit[i_month] = marginal_benefit
 
-        return marginal_cost, marginal_benefit, next_action, alt_lact_fraction, alt_dry_fraction
+        return marginal_cost, marginal_benefit, next_action, alt_lact_fraction, alt_dry_fraction, delayed_mitigation
 
     def _calc_expected_pg_feed_prod_price(self, i_month, stop_idx, remaining_months, month):
         """
@@ -856,6 +906,7 @@ class SimpleDairyModel(BaseSimpleFarmModel):
         out_alt_fut_prod = np.zeros_like(alt_lact_fraction)
         out_cur_fut_feed_def = np.zeros_like(alt_lact_fraction)
         out_alt_sup_cost = np.zeros_like(alt_lact_fraction)
+        delayed_mitigation = np.zeros(self.nsims, dtype=bool)
 
         if cull_idx.any():
             # shape of the new data (alt_cull) is (nsims_with_cull, ncull_steps)
@@ -936,7 +987,7 @@ class SimpleDairyModel(BaseSimpleFarmModel):
         return out_alt_fut_prod, out_alt_sup_cost, next_action, alt_lact_fraction, alt_dry_fraction
 
     def __run_alt_coarse(self, in_alt_lact, in_alt_dry, i_month, remaining_months, once_aday_idx, to_once_aday_idx,
-                         in_pg, in_prod_price, current_state, current_feed, in_feed_cost, cum_feed, steps):
+                         in_pg, in_prod_price, current_state, current_feed, in_feed_cost, cum_feed, steps, delay=0):
         assert in_alt_lact.shape == in_alt_dry.shape
         datashape = in_alt_lact.shape
         in_alt_dry = in_alt_dry.flatten()
@@ -990,7 +1041,8 @@ class SimpleDairyModel(BaseSimpleFarmModel):
             current_feed=use_current_feed,
             use_feed_cost=use_feed_cost,
             current_cum_import=use_cum_feed,
-            nsims=np.prod(datashape))
+            nsims=np.prod(datashape),
+            delay=delay)
 
         future_product = future_product.reshape(datashape)
         supplement_cost = supplement_cost.reshape(datashape)
@@ -1272,7 +1324,7 @@ class SimpleDairyModel(BaseSimpleFarmModel):
                               use_prod_price,
                               use_pg, current_state, current_feed, use_feed_cost, nsims,
                               current_cum_import,
-                              inc_scarcity=True):
+                              inc_scarcity=True, delay=0):
         current_cum_import = current_cum_import.copy()
         remaining_months = remaining_months.copy()
         lact_fraction = lact_fraction.copy()
@@ -1288,14 +1340,22 @@ class SimpleDairyModel(BaseSimpleFarmModel):
         future_lactating_cow_fraction = np.zeros((len(remaining_months), nsims))
         future_dry_cow_fraction = np.zeros((len(remaining_months), nsims))
         future_replacement_fraction = np.zeros((len(remaining_months), nsims))
-        for i, m in enumerate(set(remaining_months)):
+        all_months = np.arange(self.month_reset - 1, self.month_reset + 11) % 12 + 1
+        i0 = np.where(all_months == remaining_months[0])[0][0]
+        assert set(remaining_months) == set(all_months[i0:])
+        loss_fraction = {m: 1 - self.dry_cow_loss / 12 * i for i, m in enumerate(all_months[i0:])}
+        for m in remaining_months:
             idx = remaining_months == m
-            lc_with_loss = lact_fraction * (1 - self.lactating_cow_loss / 12 * i)
-            dc_with_loss = dry_fraction * (1 - self.dry_cow_loss / 12 * i)
-            if m in [6, 7]:
+            if m == 6:
                 future_lactating_cow_fraction[idx] = 0
-                future_dry_cow_fraction[idx] = lc_with_loss + dc_with_loss
+                future_dry_cow_fraction[
+                    idx] = self.peak_lact_cow_per_ha + self.dry_cow_loss / 12  # add the partial extra...
+            elif m == 7:
+                future_lactating_cow_fraction[idx] = 0
+                future_dry_cow_fraction[idx] = self.peak_lact_cow_per_ha
             else:
+                lc_with_loss = lact_fraction * loss_fraction[m]
+                dc_with_loss = dry_fraction * loss_fraction[m]
                 future_lactating_cow_fraction[idx] = lc_with_loss
                 future_dry_cow_fraction[idx] = dc_with_loss
 
@@ -1304,11 +1364,26 @@ class SimpleDairyModel(BaseSimpleFarmModel):
             else:
                 future_replacement_fraction[idx] = self.replacement_rate
 
+        # setup support for delayed action
+        apply_1ad_idx = np.ones(remaining_months.shape).astype(bool)
+        if delay != 0:
+            apply_1ad_idx[:delay] = False
+
+            for i, m in enumerate(remaining_months[:delay]):
+                if m in [6, 7]:
+                    pass  # no change to dry cow number in June and July, delay has not purpose...
+                else:
+                    lc_with_loss_delay = self.lactating_cow_fraction * loss_fraction[m]
+                    dc_with_loss_delay = self.dry_cow_fraction * loss_fraction[m]
+                    future_lactating_cow_fraction[i] = lc_with_loss_delay
+                    future_dry_cow_fraction[i] = dc_with_loss_delay
+
         future_product = (
                 np.array([self.kgms_per_lac_cow[m] for m in remaining_months])[:, np.newaxis]
                 * (self.peak_lact_cow_per_ha * future_lactating_cow_fraction).round(self.precision)
         )
-        future_product[:, once_aday_idx] *= self.one_a_daymilk_production_fraction
+        apply_1ad_idx = apply_1ad_idx[:, np.newaxis] & once_aday_idx[np.newaxis]
+        future_product[apply_1ad_idx] *= self.one_a_daymilk_production_fraction
 
         future_product = future_product * use_prod_price
         future_product = future_product.sum(axis=0)
@@ -1319,7 +1394,7 @@ class SimpleDairyModel(BaseSimpleFarmModel):
         feed_needed_replacement = np.zeros((len(remaining_months), nsims))
 
         # need to move to for loop otherwise it won't use the correct values
-        for i, m in enumerate(set(remaining_months)):
+        for m in set(remaining_months):
             idx = remaining_months == m
             feed_needed_lact[idx] = self.feed_per_cow_lactating[m] * future_lactating_cow_fraction[
                 idx] * self.peak_lact_cow_per_ha
@@ -1330,18 +1405,20 @@ class SimpleDairyModel(BaseSimpleFarmModel):
         feed_needed_lact[:, once_aday_idx] *= self.feed_fraction_1aday
         total_feed_needed = feed_needed_lact + feed_needed_dry + feed_needed_replacement
 
-        current_home_production = self.convert_pg_to_me(use_pg, current_state) * self.homegrown_store_efficiency
-        current_stored_feed = current_feed * self.supplemental_efficiency
+        current_home_production = self.convert_pg_to_me(use_pg, current_state) * self.homegrown_efficiency
+        # todo do I need to consider home grown store efficiency???, probably....
+        current_stored_feed = current_feed
         deficit_feed = np.zeros(total_feed_needed.shape)
         for i in range(len(deficit_feed)):
             home_prod = current_home_production[i]
             current_stored_feed += home_prod
             feed_need = total_feed_needed[i]
-            temp = np.concatenate((np.zeros(current_stored_feed.shape)[:, np.newaxis],
-                                   (feed_need - current_stored_feed)[:, np.newaxis]), axis=1)
+            temp = np.concatenate((
+                np.zeros(current_stored_feed.shape)[:, np.newaxis],
+                (feed_need - current_stored_feed * self.supplemental_efficiency)[:, np.newaxis]), axis=1)
             deficit = np.max(temp, axis=1)
             deficit_feed[i] = deficit
-            current_stored_feed -= feed_need - deficit
+            current_stored_feed -= (feed_need - deficit) / self.supplemental_efficiency
 
         assert geclose(deficit_feed, 0).all()
 
@@ -1404,7 +1481,8 @@ class DairyModelWithSCScarcity(SimpleDairyModel):
     def __init__(self, all_months, istate, pg, ifeed, imoney, sup_feed_cost, product_price, opt_mode='optimised',
                  monthly_input=True,
                  s=None, a=None, b=None, c=None, peak_lact_cow_per_ha=default_peak_cow, ncore_opt=1,
-                 logging_level=logging.CRITICAL, cull_dry_step=None, cull_levels=None, dryoff_levels=None):
+                 logging_level=logging.CRITICAL, cull_dry_step=None, cull_levels=None, dryoff_levels=None,
+                 allow_mitigation_delay=False):
         """
 
         :param all_months: integer months, defines mon_len and time_len
@@ -1431,6 +1509,7 @@ class DairyModelWithSCScarcity(SimpleDairyModel):
         :param cull_dry_step: if None, use the optimized cull/dryoff decision, if float, use the cull/dryoff decision with a step size of cull_dry_step
         :param cull_levels: if opt_mode='coarse' the number of equally spaced cull steps to make, otherwise must be None
         :param dryoff_levels: if opt_mode='coarse' the number of equally spaced dryoff steps to make, otherwise must be None
+        :param allow_mitigation_delay: if True, allow for a delay in the implementation of the cull/dryoff decision, if False, implement the cull/dryoff decision immediately. In practice this takes the "best" state and asks if delaying the application of the best state for a decision time step is more financially beneficial as compared to immediate implementation.
         """
         assert all([e is not None for e in [s, a, b, c]]), 's, a, b, c must not be None'
         assert np.isfinite(np.array([s, a, b, c])).all(), 's, a, b, c must be finite'
@@ -1447,7 +1526,8 @@ class DairyModelWithSCScarcity(SimpleDairyModel):
                          peak_lact_cow_per_ha=peak_lact_cow_per_ha, ncore_opt=ncore_opt, logging_level=logging_level,
                          cull_dry_step=cull_dry_step,
                          cull_levels=cull_levels,
-                         dryoff_levels=dryoff_levels)
+                         dryoff_levels=dryoff_levels,
+                         allow_mitigation_delay=allow_mitigation_delay)
 
     def plot_scurve(self, plt_dnz_fs=False, figsize=(10, 10)):
         """
@@ -1491,7 +1571,7 @@ class DairyModelWithSCScarcity(SimpleDairyModel):
                                                               np.zeros((1, nsims))), axis=0),
                                               axis=0)
         cum_feed_per = ((start_cum_ann_feed_import + new_feed.cumsum(axis=0))
-                        / (self.get_annual_feed()/ self.supplemental_efficiency) * 100)
+                        / (self.get_annual_feed() / self.supplemental_efficiency) * 100)
         assert geclose(cum_feed_per.min(), 0), f'{cum_feed_per.min()}'
         assert leclose(cum_feed_per.max(), 100), f'{cum_feed_per.max()}'  # 100 to allow for rounding errors
         cum_feed_per[cum_feed_per > 100] = 100

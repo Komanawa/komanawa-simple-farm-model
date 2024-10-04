@@ -60,15 +60,26 @@ def get_pgr(year, site):
     return outdata
 
 
-class NoRepsDM(DairyModelWithSCScarcity): # todo scaricty is necissary otherwise the model over imports...
+class NoRepsDM(DairyModelWithSCScarcity):  # todo scaricty is necissary otherwise the model over imports...
     feed_per_cow_replacement = {m: 0 for m in all_months}  # remove feed from replacements
     feed_per_cow_dry = use_dry_cow_feed  # remove feed from cows in June/July
+    ndays_feed_import = 1
+    # todo something feels weird... homegrown_store_efficiency = 0.9
+    # todo something feels weird... homegrown_efficiency = .9
+    # todo something feels weird... supplemental_efficiency = .95
+
+
+class NoRepsNoEff(DairyModelWithSCScarcity):
+    supplemental_efficiency = 1
+    feed_store_trigger = 0
+    feed_per_cow_replacement = {m: 0 for m in all_months}  # remove feed from replacements
+    feed_per_cow_dry = use_dry_cow_feed  # remove feed from cows in June/July
+    ndays_feed_import = 1
 
 
 def make_data_no_pg_system(explore_plot=False):
-    # todo move to s curve
     a = 1
-    b = 0.2
+    b = 5
     s = 10
 
     base_feed_price = 400 / 1000 / mj_per_kg_dm
@@ -86,17 +97,17 @@ def make_data_no_pg_system(explore_plot=False):
             else:
                 ifeed_adder = outdata.loc[i, 'last_feed'] * mj_per_kg_dm
             use_pg = get_pgr(year0, farm0) * 0
-            dm = NoRepsDM(all_months, istate=[0], pg=use_pg,
-                          ifeed=[expect_feed_demand[i] * mj_per_kg_dm + ifeed_adder],
-                          imoney=[0], sup_feed_cost=base_feed_price, product_price=ms_price,
-                          monthly_input=True,
-                          peak_lact_cow_per_ha=stock_rate, ncore_opt=1, logging_level=logging.CRITICAL,
-                          cull_dry_step=None, opt_mode='coarse',
-                          cull_levels=10, dryoff_levels=50,
-                          s=s, a=a, b=b, c=20)
+            dm = NoRepsNoEff(all_months, istate=[0], pg=use_pg,
+                             ifeed=[expect_feed_demand[i] * mj_per_kg_dm + ifeed_adder],
+                             imoney=[0], sup_feed_cost=base_feed_price, product_price=ms_price,
+                             monthly_input=True,
+                             peak_lact_cow_per_ha=stock_rate, ncore_opt=1, logging_level=logging.CRITICAL,
+                             cull_dry_step=None, opt_mode='coarse',
+                             cull_levels=1000, dryoff_levels=50,
+                             s=s, a=a, b=b, c=1, allow_mitigation_delay=True)
             dm.run_model()
             if explore_plot:
-                fig, axs = dm.plot_results('feed', 'lactating_cow_fraction','cum_feed_import' )
+                fig, axs = dm.plot_results('feed', 'lactating_cow_fraction', 'cum_feed_import')
                 fig.suptitle(f'{year0} {farm0} {stock_rate} cows/ha')
                 fig, axs = dm.plot_results('feed_replacement', 'feed_dry', 'feed_lactating')
                 fig.suptitle(f'{year0} {farm0} {stock_rate} cows/ha')
@@ -133,7 +144,7 @@ def make_data_not_fixed_system(explore_plot=False):
     b = 1
     s = 10
 
-    for n in range(5):
+    for n in range(1):
         for i, stock_rate in enumerate(stocking_rates):
             year0 = year[i]
             farm0 = farm[i]
@@ -148,10 +159,10 @@ def make_data_not_fixed_system(explore_plot=False):
                           opt_mode='optimised', monthly_input=True,
                           peak_lact_cow_per_ha=stock_rate, ncore_opt=1, logging_level=logging.CRITICAL,
                           cull_dry_step=None, cull_levels=None, dryoff_levels=None,
-                          s=s, a=a, b=b, c=20) # todo play with C...
+                          s=s, a=a, b=b, c=20)  # todo play with C...
             dm.run_model()
             if explore_plot:
-                fig, axs = dm.plot_results('feed', 'lactating_cow_fraction','cum_feed_import' )
+                fig, axs = dm.plot_results('feed', 'lactating_cow_fraction', 'cum_feed_import')
                 fig.suptitle(f'{year0} {farm0} {stock_rate} cows/ha')
                 fig, axs = dm.plot_results('feed_replacement', 'feed_dry', 'feed_lactating')
                 fig.suptitle(f'{year0} {farm0} {stock_rate} cows/ha')
@@ -179,7 +190,7 @@ def make_data_not_fixed_system(explore_plot=False):
 
 def make_data_fixed_import():
     # todo move to s curve
-    base_feed_price = 400000000000 / 1000 / mj_per_kg_dm # todo this does not work...
+    base_feed_price = 400000000000 / 1000 / mj_per_kg_dm  # todo this does not work...
     outdata = pd.DataFrame(index=range(len((stocking_rates))))
     outdata['year'] = year
     outdata['farm'] = farm
@@ -201,7 +212,7 @@ def make_data_fixed_import():
                           peak_lact_cow_per_ha=stock_rate, ncore_opt=1, logging_level=logging.CRITICAL,
                           cull_dry_step=None, cull_levels=None, dryoff_levels=None)
             dm.run_model()
-            fig, axs = dm.plot_results('feed', 'lactating_cow_fraction','cum_feed_import' )
+            fig, axs = dm.plot_results('feed', 'lactating_cow_fraction', 'cum_feed_import')
             fig.suptitle(f'{year0} {farm0} {stock_rate} cows/ha')
             fig, axs = dm.plot_results('feed_replacement', 'feed_dry', 'feed_lactating')
             fig.suptitle(f'{year0} {farm0} {stock_rate} cows/ha')
@@ -283,6 +294,9 @@ def _plot_outputs(outdata, plot_rel=False):
 # todo a version that limits the pgr?
 
 if __name__ == '__main__':
-    make_data_no_pg_system()
-    make_data_not_fixed_system()
-    #make_data_fixed_import()
+    t = get_pgr(2019, 'LUDF')
+    t = sum([t*month_len[m] for t,m in zip(t,all_months)])
+    print(t)
+    make_data_not_fixed_system() # todo something weird is happening here not sure what...
+    make_data_no_pg_system()  # todo looking pretty good
+    # make_data_fixed_import()

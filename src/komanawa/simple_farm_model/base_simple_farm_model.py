@@ -379,7 +379,7 @@ class BaseSimpleFarmModel(object):
             current_feed += delta_store_feed
 
             # supplement feed needed
-            sup_feed_needed = sup_feed_needed * self.supplemental_efficiency
+            sup_feed_needed = sup_feed_needed / self.supplemental_efficiency # todo dbl check
             self.sup_feed_needed[i_month, :] = sup_feed_needed.copy()
             feedout_cost = sup_feed_needed * self.sup_feedout_cost
             assert np.all(feedout_cost >= 0), 'feedout cost must be positive'

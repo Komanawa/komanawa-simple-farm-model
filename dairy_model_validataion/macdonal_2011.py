@@ -152,6 +152,6 @@ def run_farm_model():
     # todo plot stuff
     pass
 
-
+# todo re-run with new farm model stuff
 if __name__ == '__main__':
     run_farm_model()
