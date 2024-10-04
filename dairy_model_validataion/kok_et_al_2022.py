@@ -15,6 +15,7 @@ from pathlib import Path
 from komanawa.simple_farm_model import SimpleDairyModel, DairyModelWithSCScarcity
 from komanawa.simple_farm_model.base_simple_farm_model import month_len
 from komanawa.simple_farm_model.simple_dairy_model import mj_per_kg_dm, monly_ms_prod, dry_cow_feed, lactating_feed
+from op_expenses import get_operating_expenses
 
 # todo validation against https://doi.org/10.33584/jnzg.2022.84.3567
 
@@ -44,6 +45,10 @@ use_dry_cow_feed[6] = 0
 use_dry_cow_feed[7] = 0
 ms_price = 6.75
 
+gross_rev = ms_prod * ms_price
+opt_expese = np.array([5515, 5017, 7133, 6182, 5310, 7327])
+net_income = gross_rev - opt_expese
+
 
 def get_pgr(year, site):
     assert site in farm
@@ -60,14 +65,21 @@ def get_pgr(year, site):
     return outdata
 
 
-class NoRepsDM(DairyModelWithSCScarcity):  # todo scaricty is necissary otherwise the model over imports...
+class NoRepsDM(DairyModelWithSCScarcity):  # todo scarcity is necissary otherwise the model over imports...
     feed_per_cow_replacement = {m: 0 for m in all_months}  # remove feed from replacements
     feed_per_cow_dry = use_dry_cow_feed  # remove feed from cows in June/July
     ndays_feed_import = 1
-    # todo something feels weird... homegrown_store_efficiency = 0.9
-    # todo something feels weird... homegrown_efficiency = .9
-    # todo something feels weird... supplemental_efficiency = .95
 
+class NoRepsDMNoSupHandle(DairyModelWithSCScarcity):
+    feed_per_cow_replacement = {m: 0 for m in all_months}  # remove feed from replacements
+    feed_per_cow_dry = use_dry_cow_feed  # remove feed from cows in June/July
+    ndays_feed_import = 1
+    sup_feedout_cost = 0  # todo I think we also need to lessen this cost I think it's way to high... or it should only be applied to imported feed not the on-farm feed
+    homegrown_storage_cost = 0  # todo we need to lessen this cost, I think it's way too high There is some component of the storage that applies on land...
+
+# todo I think the homegrown storage efficiency is too low... some portion of this would certainly be stored on farm....
+#  75%*90% = 67.5%... too low as compared to 80% utilisation on farm,
+#  suggests using 85% which yields as total utilisation rate of  76.5%  less of a problem when the "stored" feed is stored on pasture...
 
 class NoRepsNoEff(DairyModelWithSCScarcity):
     supplemental_efficiency = 1
@@ -75,6 +87,8 @@ class NoRepsNoEff(DairyModelWithSCScarcity):
     feed_per_cow_replacement = {m: 0 for m in all_months}  # remove feed from replacements
     feed_per_cow_dry = use_dry_cow_feed  # remove feed from cows in June/July
     ndays_feed_import = 1
+    sup_feedout_cost = 0
+
 
 
 def make_data_no_pg_system(explore_plot=False):
@@ -117,31 +131,41 @@ def make_data_no_pg_system(explore_plot=False):
             last_dry = dm.out_dry_cow_fraction[np.where((dm.all_days == 31) & (dm.all_months == 5))][0, 0]
             last_feed = dm.model_feed[-1][0] / mj_per_kg_dm
             feed_import = dm.model_feed_imported.sum() / mj_per_kg_dm
-            total_feed_cost = dm.model_feed_cost.sum()
+            total_feed_cost = dm.model_feed_cost.sum() + base_feed_price * total_sup[i] * mj_per_kg_dm
             outdata.loc[i, 'total_prod'] = tprod
             outdata.loc[i, 'prod_per_cow'] = tprod / stock_rate
             outdata.loc[i, 'last_lact'] = last_lact
             outdata.loc[i, 'last_dry'] = last_dry
             outdata.loc[i, 'last_feed'] = last_feed
             outdata.loc[i, 'feed_import'] = feed_import
-            outdata.loc[i, 'total_feed_cost'] = total_feed_cost
             outdata.loc[i, 'feed_demand'] = np.nansum(dm.model_feed_demand) / mj_per_kg_dm
             outdata.loc[i, 'total_prod_money'] = np.nansum(dm.model_prod_money)
+            outdata.loc[i, 'money'] = dm.model_money[-1]
+            outdata.loc[i, 'total_feed_cost'] = total_feed_cost
+            outdata.loc[i, 'feed_handling_cost'] = (outdata.loc[i, 'total_prod_money'] - outdata.loc[i, 'money'] -
+                                                   outdata.loc[i, 'total_feed_cost'])*-1
+            outdata.loc[i, 'op_expenses'] = sum(list(get_operating_expenses(stock_rate).values()))
+            outdata.loc[i, 'total_expenses'] = outdata.loc[i, 'total_feed_cost'] + outdata.loc[i, 'op_expenses'] + \
+                                               outdata.loc[i, 'feed_handling_cost']
+            outdata.loc[i, 'net_income'] = outdata.loc[i, 'money'] - outdata.loc[i, 'op_expenses']
         print(outdata['last_feed'])
 
-    fig, axs = _plot_outputs(outdata)
+    fig, axs, fig_money, moneyaxs = _plot_outputs(outdata)
     plt.show()
 
 
 def make_data_not_fixed_system(explore_plot=False):
-    # todo move to s curve
+    # todo save a cleaned up version of the "explore_plots"
+    # todo add running costs and see net income... super important...
+    # todo the limiting point for feed in these farms are the spring months (prior to the Nov,)  There must be surplus feed here that's not accounted for in the paper...
+    # todo I need higher imported feed to support the spring.
     base_feed_price = 400 / 1000 / mj_per_kg_dm
     outdata = pd.DataFrame(index=range(len((stocking_rates))))
     outdata['year'] = year
     outdata['farm'] = farm
     outdata['stocking_rate'] = stocking_rates
     a = 1
-    b = 1
+    b = 10
     s = 10
 
     for n in range(1):
@@ -153,13 +177,19 @@ def make_data_not_fixed_system(explore_plot=False):
                 ifeed_adder = 0
             else:
                 ifeed_adder = outdata.loc[i, 'last_feed'] * mj_per_kg_dm
+
+            ifeed_per_cow = 300  # todo this works quite well...
+            cs = {'LUDF': 20, 'LSR': 10, 'MSR': 25}
+
             dm = NoRepsDM(all_months, istate=[0], pg=use_pg,
-                          ifeed=[0 + ifeed_adder],
+                          ifeed=[ifeed_per_cow * stock_rate * mj_per_kg_dm + ifeed_adder],
+                          # ifeed based on 4 rounds of 1500 kg DM/ha
                           imoney=[0], sup_feed_cost=base_feed_price, product_price=ms_price,
-                          opt_mode='optimised', monthly_input=True,
+                          monthly_input=True,
                           peak_lact_cow_per_ha=stock_rate, ncore_opt=1, logging_level=logging.CRITICAL,
-                          cull_dry_step=None, cull_levels=None, dryoff_levels=None,
-                          s=s, a=a, b=b, c=20)  # todo play with C...
+                          cull_dry_step=None, opt_mode='coarse',
+                          cull_levels=1000, dryoff_levels=50,
+                          s=s, a=a, b=b, c=cs[farm0])
             dm.run_model()
             if explore_plot:
                 fig, axs = dm.plot_results('feed', 'lactating_cow_fraction', 'cum_feed_import')
@@ -179,24 +209,37 @@ def make_data_not_fixed_system(explore_plot=False):
             outdata.loc[i, 'last_dry'] = last_dry
             outdata.loc[i, 'last_feed'] = last_feed
             outdata.loc[i, 'feed_import'] = feed_import
-            outdata.loc[i, 'total_feed_cost'] = total_feed_cost
             outdata.loc[i, 'feed_demand'] = np.nansum(dm.model_feed_demand) / mj_per_kg_dm
             outdata.loc[i, 'total_prod_money'] = np.nansum(dm.model_prod_money)
-        print(outdata['last_feed'])
-    fig, axs = _plot_outputs(outdata)
+            outdata.loc[i, 'money'] = dm.model_money[-1]
+            outdata.loc[i, 'total_feed_cost'] = total_feed_cost
+            outdata.loc[i, 'feed_handling_cost'] = (outdata.loc[i, 'total_prod_money'] - outdata.loc[i, 'money'] -
+                                                   outdata.loc[i, 'total_feed_cost'])
+            outdata.loc[i, 'op_expenses'] = sum(list(get_operating_expenses(stock_rate).values()))
+            outdata.loc[i, 'total_expenses'] = outdata.loc[i, 'total_feed_cost'] + outdata.loc[i, 'op_expenses'] + \
+                                               outdata.loc[i, 'feed_handling_cost']
+            outdata.loc[i, 'net_income'] = outdata.loc[i, 'money'] - outdata.loc[i, 'op_expenses']
+            pass
+    fig, axs, fig_money, moneyaxs = _plot_outputs(outdata)
     plt.show()
     pass
 
 
-def make_data_fixed_import():
-    # todo move to s curve
-    base_feed_price = 400000000000 / 1000 / mj_per_kg_dm  # todo this does not work...
+def make_data_silage_ifeed(explore_plot=False):
+    # todo save a cleaned up version of the "explore_plots"
+    # todo add running costs and see net income... super important...
+    # todo the limiting point for feed in these farms are the spring months (prior to the Nov,)  There must be surplus feed here that's not accounted for in the paper...
+    # todo I need higher imported feed to support the spring.
+    base_feed_price = 400 / 1000 / mj_per_kg_dm
     outdata = pd.DataFrame(index=range(len((stocking_rates))))
     outdata['year'] = year
     outdata['farm'] = farm
     outdata['stocking_rate'] = stocking_rates
+    a = 1
+    b = 10
+    s = 20
 
-    for n in range(5):
+    for n in range(1):
         for i, stock_rate in enumerate(stocking_rates):
             year0 = year[i]
             farm0 = farm[i]
@@ -205,18 +248,27 @@ def make_data_fixed_import():
                 ifeed_adder = 0
             else:
                 ifeed_adder = outdata.loc[i, 'last_feed'] * mj_per_kg_dm
-            dm = NoRepsDM(all_months, istate=[0], pg=use_pg,
-                          ifeed=[total_sup[i] * mj_per_kg_dm + ifeed_adder],
+
+            ifeed = silage_supplement[i] * mj_per_kg_dm + ifeed_adder
+
+            ifeed_based_on_dif = {'LUDF':1000, 'LSR': 575, 'MSR': 1200}  # todo THIS REALLY HELPS THERE MUST BE "PASTURE STORED FEED"
+            cs = {'LUDF': 7, 'LSR': 5, 'MSR': 15}
+            dm = NoRepsDMNoSupHandle(all_months, istate=[0], pg=use_pg,
+                          ifeed=[ifeed + ifeed_based_on_dif[farm0]*stock_rate*mj_per_kg_dm],
+                          # ifeed based on 4 rounds of 1500 kg DM/ha
                           imoney=[0], sup_feed_cost=base_feed_price, product_price=ms_price,
-                          opt_mode='optimised', monthly_input=True,
+                          monthly_input=True,
                           peak_lact_cow_per_ha=stock_rate, ncore_opt=1, logging_level=logging.CRITICAL,
-                          cull_dry_step=None, cull_levels=None, dryoff_levels=None)
+                          cull_dry_step=None, opt_mode='coarse',
+                          cull_levels=1000, dryoff_levels=50,
+                          s=s, a=a, b=b, c=cs[farm0])
             dm.run_model()
-            fig, axs = dm.plot_results('feed', 'lactating_cow_fraction', 'cum_feed_import')
-            fig.suptitle(f'{year0} {farm0} {stock_rate} cows/ha')
-            fig, axs = dm.plot_results('feed_replacement', 'feed_dry', 'feed_lactating')
-            fig.suptitle(f'{year0} {farm0} {stock_rate} cows/ha')
-            plt.show()
+            if explore_plot:
+                fig, axs = dm.plot_results('feed', 'lactating_cow_fraction', 'cum_feed_import')
+                fig.suptitle(f'{year0} {farm0} {stock_rate} cows/ha')
+                fig, axs = dm.plot_results('feed_replacement', 'feed_dry', 'feed_lactating')
+                fig.suptitle(f'{year0} {farm0} {stock_rate} cows/ha')
+                plt.show()
             tprod = np.nansum(dm.model_prod)
             last_lact = dm.out_lactating_cow_fraction[np.where((dm.all_days == 31) & (dm.all_months == 5))][0, 0]
             last_dry = dm.out_dry_cow_fraction[np.where((dm.all_days == 31) & (dm.all_months == 5))][0, 0]
@@ -229,21 +281,32 @@ def make_data_fixed_import():
             outdata.loc[i, 'last_dry'] = last_dry
             outdata.loc[i, 'last_feed'] = last_feed
             outdata.loc[i, 'feed_import'] = feed_import
-            outdata.loc[i, 'total_feed_cost'] = total_feed_cost
             outdata.loc[i, 'feed_demand'] = np.nansum(dm.model_feed_demand) / mj_per_kg_dm
             outdata.loc[i, 'total_prod_money'] = np.nansum(dm.model_prod_money)
-        print(outdata['last_feed'])
-    fig, axs = _plot_outputs(outdata)
+            outdata.loc[i, 'money'] = dm.model_money[-1]
+            outdata.loc[i, 'total_feed_cost'] = total_feed_cost
+            outdata.loc[i, 'feed_handling_cost'] = (outdata.loc[i, 'total_prod_money'] - outdata.loc[i, 'money'] -
+                                                   outdata.loc[i, 'total_feed_cost'])
+            outdata.loc[i, 'op_expenses'] = sum(list(get_operating_expenses(stock_rate).values()))
+            outdata.loc[i, 'total_expenses'] = outdata.loc[i, 'total_feed_cost'] + outdata.loc[i, 'op_expenses'] + \
+                                               outdata.loc[i, 'feed_handling_cost']
+            outdata.loc[i, 'net_income'] = outdata.loc[i, 'money'] - outdata.loc[i, 'op_expenses']
+            pass
+    fig, axs, fig_money, moneyaxs = _plot_outputs(outdata, sup_inc_silage=False)
     plt.show()
     pass
 
 
-def _plot_outputs(outdata, plot_rel=False):
+def _plot_outputs(outdata, plot_rel=False, plot_money_rel=True, sup_inc_silage=True):
     nanv = np.full_like(stocking_rates, np.nan)
     keys = 'total_prod', 'last_feed', 'feed_import', 'last_lact', 'feed_demand', 'prod_per_cow'
     nice_names = 'Total production', 'Feed Stored', 'Feed Imported', 'Fraction lactating Cows (EOY)', 'Feed Demand', 'Production per cow'
     units = 'kg MS', 'kg DM', 'kg DM', 'fraction', 'kg DM', 'kg MS'
-    reported = ms_prod, nanv, total_sup, nanv, expect_feed_demand, ms_prod / stocking_rates
+    if sup_inc_silage:
+        use_sup = total_sup
+    else:
+        use_sup = barly_supp
+    reported = ms_prod, nanv, use_sup, nanv, expect_feed_demand, ms_prod / stocking_rates
     fig = plt.figure(figsize=(14, 10))
     gs = fig.add_gridspec(3, 3, height_ratios=[0.1, 1, 1])
     leg_ax = fig.add_subplot(gs[0, :])
@@ -288,15 +351,62 @@ def _plot_outputs(outdata, plot_rel=False):
     fig.supxlabel('Stocking rate (cows/ha)')
 
     fig.tight_layout()
-    return fig, axs
+
+    keys = 'total_prod_money', 'net_income', 'total_expenses', 'total_feed_cost', 'feed_handling_cost', 'op_expenses'
+    nice_names = 'Total production value', 'Net income', 'Total expenses', 'Total feed cost', 'Feed handling cost', 'Operating expenses'
+    units = '$', '$', '$', '$', '$', '$'
+    reported = gross_rev, net_income, opt_expese,  nanv,  nanv, opt_expese
+
+    fig_money = plt.figure(figsize=(14, 10))
+    gs = fig_money.add_gridspec(3, 3, height_ratios=[0.1, 1, 1])
+    leg_ax = fig_money.add_subplot(gs[0, :])
+    leg_ax.axis('off')
+    moneyaxs = []
+    xplot = np.arange(len(stocking_rates))
+    xticks = [f'{y}-{f}\n{r}' + ' $cow~ha^{-1}$' for y, f, r in zip(
+        np.array(year)[xs], np.array(farm)[xs], stocking_rates[xs])]
+    for r in range(2):
+        for c in range(3):
+            ax = fig_money.add_subplot(gs[r + 1, c])
+            moneyaxs.append(ax)
+    for key, rport, ax, nm, u in zip(keys, reported, moneyaxs, nice_names, units):
+        got = outdata.loc[xs, key] / outdata.loc[0, key]
+        expect = rport[xs] / rport[0]
+
+        if plot_money_rel:
+            ax_raw = ax.twinx()
+            if key != 'last_dry':
+                ax_raw.plot(xplot, got, label=f'Modelled relative to LUDF 2018, 3.5 ' + '$cows~ha^{-1}$', c='r',
+                            alpha=0.5, ls='--', )
+            ax_raw.plot(xplot, expect, label=f'Kok et al. (2022) relative to LUDF 2018, 3.5' + ' $cows~ha^{-1}$',
+                        c='b', ls='--',
+                        alpha=0.5)
+        ax.set_ylabel(f'Relative to LUDF 2018, 3.5' + ' $cows~ha^{-1}$')
+        ax.set_xticks(xplot)
+        ax.set_xticklabels(xticks, rotation=-30)
+
+        got = outdata.loc[xs, key]
+        expect = rport[xs]
+        ax.set_ylabel(f'Absolute ({u})')
+        ax.plot(xplot, got, label='Modelled', c='r', alpha=0.5, marker='o')
+        ax.plot(xplot, expect, label='Kok et al. (2022)', c='b', alpha=0.5, marker='o')
+        ax.set_title(nm)
+
+    hand, labs = ax.get_legend_handles_labels()
+    if plot_money_rel:
+        hand_raw, labs_raw = ax_raw.get_legend_handles_labels()
+    else:
+        hand_raw, labs_raw = [], []
+    leg_ax.legend(hand + hand_raw, labs + labs_raw, loc='center', ncol=2)
+    fig_money.supxlabel('Stocking rate (cows/ha)')
+
+    fig_money.tight_layout()
 
 
-# todo a version that limits the pgr?
+    return fig, axs, fig_money, moneyaxs
+
 
 if __name__ == '__main__':
-    t = get_pgr(2019, 'LUDF')
-    t = sum([t*month_len[m] for t,m in zip(t,all_months)])
-    print(t)
-    make_data_not_fixed_system() # todo something weird is happening here not sure what...
-    make_data_no_pg_system()  # todo looking pretty good
-    # make_data_fixed_import()
+    make_data_silage_ifeed()  # todo this matches pretty perfectly, but there is some silliness with the ifeed and the feed handling costs...
+    make_data_not_fixed_system()  # todo something weird is happening here not sure what...
+    make_data_no_pg_system()  # todo looking pretty good, even in money space (once feed handling cost is removed)

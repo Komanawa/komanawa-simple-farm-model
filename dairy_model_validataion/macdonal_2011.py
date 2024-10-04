@@ -75,7 +75,7 @@ class NoRepsDM(SimpleDairyModel):
     # todo
 
 
-def run_farm_model():
+def run_farm_model(explore_plot=True): # todo save cleaned up explore plots
     outdata = pd.DataFrame(index=stocking_rates)
 
     for stock_rate in stocking_rates:
@@ -89,6 +89,12 @@ def run_farm_model():
                       peak_lact_cow_per_ha=stock_rate, ncore_opt=1, logging_level=logging.CRITICAL,
                       cull_dry_step=None, cull_levels=None, dryoff_levels=None)
         dm.run_model()
+        if explore_plot:
+            fig, axs = dm.plot_results('feed', 'lactating_cow_fraction', 'cum_feed_import')
+            fig.suptitle(f'{stock_rate} cows/ha')
+            fig, axs = dm.plot_results('feed_replacement', 'feed_dry', 'feed_lactating')
+            fig.suptitle(f'{stock_rate} cows/ha')
+            plt.show()
         tprod = np.nansum(dm.model_prod)
         last_lact = dm.out_lactating_cow_fraction[np.where((dm.all_days == 31) & (dm.all_months == 5))][0, 0]
         last_dry = dm.out_dry_cow_fraction[np.where((dm.all_days == 31) & (dm.all_months == 5))][0, 0]
@@ -149,9 +155,12 @@ def run_farm_model():
     fig.savefig(Path.home().joinpath('Downloads', 'farm_model_validation_macdonald_2011.png'))
     plt.show()
 
-    # todo plot stuff
+    # todo plot money stuff
     pass
 
 # todo re-run with new farm model stuff
+# todo this seems to suffer from the same issues... additional feed is needed as the pasture growth cannot
+#  actually no... I think its mostly the per cow production thing that is tricky....
+#  todo I coudl implmeent this fairly easily with MS/cow (Glassey et al., 2012), see kok et. al,
 if __name__ == '__main__':
     run_farm_model()
