@@ -3,9 +3,10 @@ created matt_dumont
 on: 10/5/24
 """
 import numpy as np
-def get_operating_expenses(peak_cow, distribution=False):
+def get_operating_expenses(peak_cow, distribution=False, addition_stock_modifer=1):
     """
     get the operating expenses for a farm
+    :param peak_cow: float the peak cow number adjusted to exclude the support block
     :param distribution: bool if True return a dictionary of normal distributions for each expense, if False return the mean
     :return: Dictionary of operating expenses keys=['labour', 'stock', 'other', 'overheads']
     """
@@ -35,6 +36,7 @@ def get_operating_expenses(peak_cow, distribution=False):
         'labour': 0.15,
 
     }
+    fraction_ha = {k: v * addition_stock_modifer for k, v in fraction_ha.items()}
 
     means_v2 = {
         'depreciation': 718.3,
