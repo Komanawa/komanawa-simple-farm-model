@@ -185,9 +185,9 @@ class SimpleDairyModel(BaseSimpleFarmModel):
     month_reset = 7  # trigger farm reset on day 1 in August,
     homegrown_efficiency = 0.8
     supplemental_efficiency = 0.9
-    sup_feedout_cost = 120 / 1000 / mj_per_kg_dm  # 120/ton DM --> convert to ME, MJ
-    homegrown_store_efficiency = 0.75
-    homegrown_storage_cost = 175 / 1000 / mj_per_kg_dm  # 175/ton/DM --> convert to ME, MJ
+    sup_feedout_cost = 120 / 1000 / mj_per_kg_dm / 4  # 120/ton DM --> convert to ME, MJ
+    homegrown_store_efficiency = 0.85
+    homegrown_storage_cost = 175 / 1000 / mj_per_kg_dm / 4  # 175/ton/DM --> convert to ME, MJ
     one_a_daymilk_production_fraction = 1 - 0.13  # 13% less milk production on 1-a-day
     _start_lactating_cow_fraction = 0  # % of cows are lactating on day 1  (july)#
     _start_dry_cow_fraction = 1  # 100% of cows are dry on day 1 (july)

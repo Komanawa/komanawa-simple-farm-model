@@ -17,7 +17,7 @@ from komanawa.simple_farm_model.base_simple_farm_model import month_len
 from komanawa.simple_farm_model.simple_dairy_model import mj_per_kg_dm, monly_ms_prod, dry_cow_feed, lactating_feed
 from op_expenses import get_operating_expenses
 
-# todo validation against https://doi.org/10.33584/jnzg.2022.84.3567
+# validation against https://doi.org/10.33584/jnzg.2022.84.3567
 
 year = [2018, 2018, 2018, 2019, 2019, 2019]
 farm = ['LUDF', 'LSR', 'MSR', 'LUDF', 'LSR', 'MSR']
@@ -379,9 +379,9 @@ def _plot_outputs(outdata, plot_rel=False, plot_money_rel=True, sup_inc_silage=T
 
 
 class ModFeedHandle(DairyModelWithSCScarcity):
-    sup_feedout_cost = 120 / 1000 / mj_per_kg_dm / 5  # todo landed as 1/5 the cost as a start measure
-    homegrown_storage_cost = 175 / 1000 / mj_per_kg_dm / 5  # todo landed as 1/5 the cost as a start measure
-    homegrown_store_efficiency = .85  # todo increased the efficiency of the storage
+    sup_feedout_cost = 120 / 1000 / mj_per_kg_dm / 4  # landed as 1/5 the cost as a start measure
+    homegrown_storage_cost = 175 / 1000 / mj_per_kg_dm / 4  # landed as 1/5 the cost as a start measure
+    homegrown_store_efficiency = .85  # increased the efficiency of the storage
 
 
 def unmodified_comparison(explore_plot=False):
@@ -415,7 +415,8 @@ def unmodified_comparison(explore_plot=False):
                 cs = {'LUDF': 8, 'LSR': 6, 'MSR': 19}
 
             # modify stock rate
-            additional_land = .33 * stock_rate / (2.82/ 3.5 * min(3.5, stock_rate))  # keynote assume stock rate on support blocks scales with stockrate for lower stocking rate
+            additional_land = .33 * stock_rate / (2.82/ 3.5 * min(3.5, stock_rate))
+            # keynote assume stock rate on support blocks scales with stockrate for lower stocking rate
             total_stock = stock_rate * 1.33
             use_stock_rate = total_stock / (1 + additional_land)
             land_modifyer = 1 / (1 + additional_land)
@@ -447,6 +448,8 @@ def unmodified_comparison(explore_plot=False):
     fig, axs, fig_money, moneyaxs = _plot_outputs(outdata, sup_inc_silage=False, )
     plt.show()
 
+
+# todo save final plots and re-run tests
 
 if __name__ == '__main__':
     unmodified_comparison()  # todo this looks great!
