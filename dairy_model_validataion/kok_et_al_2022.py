@@ -126,7 +126,7 @@ def make_data_no_pg_system(explore_plot=False):
                              monthly_input=True,
                              peak_lact_cow_per_ha=stock_rate, ncore_opt=1, logging_level=logging.CRITICAL,
                              cull_dry_step=None, opt_mode='coarse',
-                             cull_levels=100, dryoff_levels=100,  # todo implment this in SLMACC
+                             cull_levels=100, dryoff_levels=100,
                              s=s, a=a, b=b, c=1, allow_mitigation_delay=True)
             dm.run_model()
             if explore_plot:
