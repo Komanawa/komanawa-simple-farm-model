@@ -15,6 +15,7 @@ from pathlib import Path
 from komanawa.simple_farm_model import SimpleDairyModel, DairyModelWithSCScarcity
 from komanawa.simple_farm_model.base_simple_farm_model import month_len
 from komanawa.simple_farm_model.simple_dairy_model import mj_per_kg_dm, monly_ms_prod, dry_cow_feed, lactating_feed
+from komanawa.simple_farm_model.stock_rate_conversion import calc_full_farm_stock_rate
 from op_expenses import get_operating_expenses
 from supporting_script import _plot_outputs, _extract_data
 from pathlib import Path
@@ -156,66 +157,6 @@ def make_data_no_pg_system(explore_plot=False):
     fig.savefig(outdir.joinpath('00_feed_passed_as_supplement.png'))
     fig_money.savefig(outdir.joinpath('00_feed_passed_as_supplement_money.png'))
 
-
-def make_data_not_fixed_system(explore_plot=False):
-    # todo save a cleaned up version of the "explore_plots"
-    # todo add running costs and see net income... super important...
-    # todo the limiting point for feed in these farms are the spring months (prior to the Nov,)  There must be surplus feed here that's not accounted for in the paper...
-    # todo I need higher imported feed to support the spring.
-    base_feed_price = 400 / 1000 / mj_per_kg_dm
-    outdata = pd.DataFrame(index=range(len((stocking_rates))))
-    outdata['year'] = year
-    outdata['farm'] = farm
-    outdata['stocking_rate'] = stocking_rates
-    a = 1
-    b = 10
-    s = 10
-
-    for n in range(1):
-        for i, stock_rate in enumerate(stocking_rates):
-            year0 = year[i]
-            farm0 = farm[i]
-            use_pg = get_pgr(year0, farm0)
-            if n == 0:
-                ifeed_adder = 0
-            else:
-                ifeed_adder = outdata.loc[i, 'last_feed'] * mj_per_kg_dm
-
-            ifeed_per_cow = 300  # todo this works quite well...
-            cs = {'LUDF': 20, 'LSR': 10, 'MSR': 25}
-
-            dm = NoRepsDM(all_months, istate=[0], pg=use_pg,
-                          ifeed=[ifeed_per_cow * stock_rate * mj_per_kg_dm + ifeed_adder],
-                          # ifeed based on 4 rounds of 1500 kg DM/ha
-                          imoney=[0], sup_feed_cost=base_feed_price, product_price=ms_price,
-                          monthly_input=True,
-                          peak_lact_cow_per_ha=stock_rate, ncore_opt=1, logging_level=logging.CRITICAL,
-                          cull_dry_step=None, opt_mode='coarse',
-                          cull_levels=100, dryoff_levels=100,
-                          s=s, a=a, b=b, c=cs[farm0])
-            dm.run_model()
-            if explore_plot:
-                fig, axs = dm.plot_results('feed', 'lactating_cow_fraction', 'cum_feed_import')
-                fig.suptitle(f'{year0} {farm0} {stock_rate} cows/ha')
-                fig, axs = dm.plot_results('feed_replacement', 'feed_dry', 'feed_lactating')
-                fig.suptitle(f'{year0} {farm0} {stock_rate} cows/ha')
-                plt.show()
-            _extract_data(dm, outdata, i, stock_rate)
-    use_sup = total_sup
-    xticks = [f'{f}-{y - 2000} {r}' + ' $c.ha^{-1}$' for y, f, r in
-              zip(np.array(year)[xs], np.array(farm)[xs], stocking_rates[xs])]
-    fig, axs, fig_money, moneyaxs = _plot_outputs(outdata,
-                                                  stocking_rates, use_sup, ms_prod, expect_feed_demand,
-                                                  xs, gross_rev, net_income, opt_expese,
-                                                  study_name='Kok et al. (2022)',
-                                                  rel_lab='LUDF 2018,',
-                                                  xticklabs=xticks,
-                                                  base_x=0,
-                                                  plot_rel=False, plot_money_rel=True)
-    plt.show()
-    pass
-
-
 def make_data_silage_ifeed(explore_plot=False):
     # todo save a cleaned up version of the "explore_plots"
     # todo add running costs and see net income... super important...
@@ -313,21 +254,15 @@ def unmodified_comparison(explore_plot=False):
 
             ifeed = silage_supplement[i] * mj_per_kg_dm + ifeed_adder
 
-            ifeed_based_on_dif = {'LUDF': 1000, 'LSR': 750,
+            ifeed_based_on_dif = {'LUDF': 1000, 'LSR': 650,
                                   'MSR': 1000}  # todo THIS REALLY HELPS THERE MUST BE "PASTURE STORED FEED"
-            cs = {'LUDF': 20, 'LSR': 10, 'MSR': 25}
             if year0 == 2018:
-                cs = {'LUDF': 8, 'LSR': 5, 'MSR': 19}
+                cs = {'LUDF': 4, 'LSR': 1, 'MSR': 19}
             else:
-                cs = {'LUDF': 8, 'LSR': 6, 'MSR': 19}
+                cs = {'LUDF': 8, 'LSR': 3, 'MSR': 19}
 
             # modify stock rate
-            additional_land = .33 * stock_rate / (2.82 / 3.5 * min(3.5, stock_rate))
-            # keynote assume stock rate on support blocks scales with stockrate for lower stocking rate
-            total_stock = stock_rate * 1.33
-            use_stock_rate = total_stock / (1 + additional_land)
-            land_modifyer = 1 / (1 + additional_land)
-            cow_modifyer = 1.33
+            use_stock_rate, land_modifyer, cow_modifyer = calc_full_farm_stock_rate(stock_rate)
             ifeed_in = [ifeed + ifeed_based_on_dif[farm0] * use_stock_rate * mj_per_kg_dm]
             # ifeed_in = [0]
 

@@ -17,6 +17,7 @@ import pandas as pd
 from komanawa.simple_farm_model import SimpleDairyModel, DairyModelWithSCScarcity
 from komanawa.simple_farm_model.base_simple_farm_model import month_len
 from komanawa.simple_farm_model.simple_dairy_model import mj_per_kg_dm, monly_ms_prod, dry_cow_feed, lactating_feed
+from komanawa.simple_farm_model.stock_rate_conversion import calc_full_farm_stock_rate
 from supporting_script import _extract_data, _plot_outputs
 from pathlib import Path
 
@@ -142,12 +143,8 @@ def run_farm_model_no_mod(explore_plot=False):
         idx = np.where(stocking_rates == stock_rate)[0][0]
         use_pg = pg_curve * pg_prod[idx]
         use_pg = np.array([u / month_len[m] for u, m in zip(use_pg, all_months)])
-        additional_land = .33 * stock_rate / (2.82 / 3.5 * min(3.5, stock_rate))
-        # keynote assume stock rate on support blocks scales with stockrate for lower stocking rate
-        total_stock = stock_rate * 1.33
-        use_stock_rate = total_stock / (1 + additional_land)
-        land_modifyer = 1 / (1 + additional_land)
-        cow_modifyer = 1.33
+        use_stock_rate, land_modifyer, cow_modifyer = calc_full_farm_stock_rate(stock_rate)
+
         ifeed_in = [silage_consumed[idx] * mj_per_kg_dm + 500 * use_stock_rate * mj_per_kg_dm]
 
         dm = LowerFeedDMWSCS(all_months, istate=[0], pg=use_pg,
@@ -238,12 +235,7 @@ def run_farm_model_no_mod_no_feed_limit(explore_plot=False):
         idx = np.where(stocking_rates == stock_rate)[0][0]
         use_pg = pg_curve * pg_prod[idx]
         use_pg = np.array([u / month_len[m] for u, m in zip(use_pg, all_months)])
-        additional_land = .33 * stock_rate / (2.82 / 3.5 * min(3.5, stock_rate))
-        # keynote assume stock rate on support blocks scales with stockrate for lower stocking rate
-        total_stock = stock_rate * 1.33
-        use_stock_rate = total_stock / (1 + additional_land)
-        land_modifyer = 1 / (1 + additional_land)
-        cow_modifyer = 1.33
+        use_stock_rate, land_modifyer, cow_modifyer = calc_full_farm_stock_rate(stock_rate)
         ifeed_in = [silage_consumed[idx] * mj_per_kg_dm + 500 * use_stock_rate * mj_per_kg_dm]
 
         dm = LowerFeedDMWSCS(all_months, istate=[0], pg=use_pg,
