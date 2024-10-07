@@ -57,8 +57,8 @@ pg_curve = pg_curve * np.array([month_len[m] for m in all_months])
 pg_curve = pg_curve / pg_curve.sum()
 
 opt_expenses = np.array([2732, 3090, 3311, 3633, 3993]) - feed_cost  # $/ha
-expect_net_income = gross_rev - feed_cost_use - opt_expenses
 expect_milk_prod_price = total_ms_yeild * milksolid_price
+expect_net_income = expect_milk_prod_price - feed_cost_use - opt_expenses
 
 use_dry_cow_feed = deepcopy(dry_cow_feed)
 use_dry_cow_feed[6] = 0
@@ -106,7 +106,7 @@ def run_farm_model(explore_plot=False):
             plt.show()
 
         _extract_data(dm, outdata, i, stock_rate, land_modifer=1, cow_modifer=1, add_sup_cost=0,
-                      additional_stock_modifier=1, )
+                      additional_stock_modifier=1, expense_modifier=0.73)
     base_idx = 3
     fig, axs, fig_money, moneyaxs = _plot_outputs(outdata,
                                                   stocking_rates,
@@ -121,7 +121,6 @@ def run_farm_model(explore_plot=False):
                                                   xticklabs=[f'{sr}' + ' $cows~ha^{-1}$' for sr in stocking_rates],
 
                                                   plot_rel=False, plot_money_rel=False,
-                                                  expense_modifier_for_net=0.75
                                                   )
     fig.suptitle('Dairy Platform Only')
     fig_money.suptitle('Dairy Platform Only')
@@ -171,13 +170,13 @@ def run_farm_model_no_mod(explore_plot=False):
 
                       cow_modifer=cow_modifyer, land_modifer=land_modifyer,
                       add_sup_cost=0,
-                      additional_stock_modifier=1, )
+                      additional_stock_modifier=1, expense_modifier=0.73)
 
         _extract_data(dm, outdata_raw, i, stock_rate,
 
                       # cow_modifer=cow_modifyer, land_modifer=land_modifyer,
                       add_sup_cost=0,
-                      additional_stock_modifier=1, )
+                      additional_stock_modifier=1,expense_modifier=0.73 )
     base_idx = 3
     fig, axs, fig_money, moneyaxs = _plot_outputs(outdata,
                                                   stocking_rates,
@@ -191,8 +190,7 @@ def run_farm_model_no_mod(explore_plot=False):
                                                   base_x=base_idx,
                                                   xticklabs=[f'{sr}' + ' $cows~ha^{-1}$' for sr in stocking_rates],
 
-                                                  plot_rel=False, plot_money_rel=False,
-                                                  expense_modifier_for_net=1
+                                                  plot_rel=False, plot_money_rel=False
                                                   )
     fig.suptitle('Full System - Similar Imports\nAdjusted for dairy platform size')
     fig_money.suptitle('Full System - Similar Imports\nAdjusted for dairy platform size')
@@ -218,7 +216,7 @@ def run_farm_model_no_mod(explore_plot=False):
                                                                              stocking_rates],
 
                                                                   plot_rel=True, plot_money_rel=True,
-                                                                  expense_modifier_for_net=1
+
                                                                   )
     fig_raw.suptitle('Full System - Similar Imports\nRaw values')
     fig_money_raw.suptitle('Full System - Similar Imports\nRaw values')
@@ -268,13 +266,13 @@ def run_farm_model_no_mod_no_feed_limit(explore_plot=False):
 
                       cow_modifer=cow_modifyer, land_modifer=land_modifyer,
                       add_sup_cost=0,
-                      additional_stock_modifier=1, )
+                      additional_stock_modifier=1, expense_modifier=0.73)
 
         _extract_data(dm, outdata_raw, i, stock_rate,
 
                       # cow_modifer=cow_modifyer, land_modifer=land_modifyer,
                       add_sup_cost=0,
-                      additional_stock_modifier=1, )
+                      additional_stock_modifier=1, expense_modifier=0.73)
     base_idx = 3
     fig, axs, fig_money, moneyaxs = _plot_outputs(outdata,
                                                   stocking_rates,
@@ -289,7 +287,6 @@ def run_farm_model_no_mod_no_feed_limit(explore_plot=False):
                                                   xticklabs=[f'{sr}' + ' $cows~ha^{-1}$' for sr in stocking_rates],
 
                                                   plot_rel=True, plot_money_rel=True,
-                                                  expense_modifier_for_net=1
                                                   )
     fig.suptitle('Full System - Less Feed Constrained\nAdjusted for dairy platform size')
     fig_money.suptitle('Full System - Less Feed Constrained\nAdjusted for dairy platform size')
@@ -313,7 +310,6 @@ def run_farm_model_no_mod_no_feed_limit(explore_plot=False):
                                                                              stocking_rates],
 
                                                                   plot_rel=True, plot_money_rel=True,
-                                                                  expense_modifier_for_net=1
                                                                   )
     fig_raw.suptitle('Full System - Less Feed Constrained\nRaw values')
     fig_money_raw.suptitle('Full System - Less Feed Constrained\nRaw values')

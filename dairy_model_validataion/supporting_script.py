@@ -18,7 +18,7 @@ def _plot_outputs(outdata,
                   xticklabs,
 
                   plot_rel=False, plot_money_rel=True,
-                  expense_modifier_for_net=1):
+                  ):
     rel_sr = stocking_rates[base_x]
     nanv = np.full_like(stocking_rates, np.nan)
     keys = 'total_prod', 'last_feed', 'feed_import', 'last_lact', 'total_feed_demand', 'prod_per_cow'
@@ -108,9 +108,6 @@ def _plot_outputs(outdata,
 
         got = outdata.loc[xs, key]
         expect = rport[xs]
-        if expense_modifier_for_net != 1 and key == 'net_income':
-            got = got + outdata.loc[xs, 'op_expenses'] * (1-expense_modifier_for_net)
-            nm = nm + f'({(expense_modifier_for_net*100)} % opt. expenses)'
         ax.set_ylabel(f'Absolute ({u})')
         ax.plot(xplot, got, label='Modelled', c='r', alpha=0.5, marker='o')
         ax.plot(xplot, expect, label=study_name, c='b', alpha=0.5, marker='o')
@@ -129,7 +126,7 @@ def _plot_outputs(outdata,
     return fig, axs, fig_money, moneyaxs
 
 def _extract_data(dm, outdata, i, stock_rate, land_modifer=1, cow_modifer=1, add_sup_cost=0,
-                  additional_stock_modifier=1):
+                  additional_stock_modifier=1, expense_modifier=1):
     assert issubclass(type(dm), SimpleDairyModel)
     tprod = np.nansum(dm.model_prod) / land_modifer
     last_lact = dm.out_lactating_cow_fraction[np.where((dm.all_days == 31) & (dm.all_months == 5))][0, 0]
@@ -152,7 +149,7 @@ def _extract_data(dm, outdata, i, stock_rate, land_modifer=1, cow_modifer=1, add
                                             dm.model_feed_cost.sum())
     outdata.loc[i, 'op_expenses'] = sum(list(get_operating_expenses(
         stock_rate,
-        addition_stock_modifer=additional_stock_modifier).values()))
+        addition_stock_modifer=additional_stock_modifier).values())) * expense_modifier
     outdata.loc[i, 'total_expenses'] = outdata.loc[i, 'total_feed_cost'] + outdata.loc[i, 'op_expenses'] + \
                                        outdata.loc[i, 'feed_handling_cost']
     outdata.loc[i, 'net_income'] = outdata.loc[i, 'money'] - outdata.loc[i, 'op_expenses']
