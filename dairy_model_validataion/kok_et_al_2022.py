@@ -183,8 +183,8 @@ def make_data_silage_ifeed(explore_plot=False):
 
             ifeed = silage_supplement[i] * mj_per_kg_dm + ifeed_adder
 
-            ifeed_based_on_dif = {'LUDF': 1000, 'LSR': 575,
-                                  'MSR': 1200}  # todo THIS REALLY HELPS THERE MUST BE "PASTURE STORED FEED"
+            ifeed_based_on_dif = {'LUDF': 1000, 'LSR': 650,
+                                  'MSR': 1000}  # todo THIS REALLY HELPS THERE MUST BE "PASTURE STORED FEED"
             cs = {'LUDF': 7, 'LSR': 5, 'MSR': 15}
             dm = NoRepsDMNoSupHandle(all_months, istate=[0], pg=use_pg,
                                      ifeed=[ifeed + ifeed_based_on_dif[farm0] * stock_rate * mj_per_kg_dm],
@@ -325,7 +325,25 @@ def unmodified_comparison(explore_plot=False):
 
 # todo save final plots, write up, and re-run tests
 
+def plot_pgr():
+    fig, ax = plt.subplots(figsize=(6, 4))
+    colors = { 'MSR':'r', 'LSR':'b', 'LUDF':'orange'}
+    lss = {2018:'-', 2019:':'}
+    for farm0, year0 in zip(farm, year):
+        ax.plot(range(len(all_months)), get_pgr(year0, farm0), label=f'{farm0}-{year0}', color=colors[farm0], ls=lss[year0], alpha=0.75)
+    ax.legend()
+    ax.set_ylabel('Pasture Growth Rate ($kgDM~ha^{-1}day^{-1}$)')
+    ax.set_xlabel('Month')
+    ax.set_xticks(range(len(all_months)))
+    ax.set_xticklabels(all_months)
+    ax.set_ylim(0,100)
+    fig.tight_layout()
+    fig.savefig(outdir.joinpath('03_pgr.png'))
+
+
+
 if __name__ == '__main__':
+    plot_pgr()
     unmodified_comparison()  # todo this looks great!
     make_data_no_pg_system()  # todo looking pretty good, even in money space (once feed handling cost is removed)
     make_data_silage_ifeed()  # todo this matches pretty perfectly, but there is some silliness with the ifeed and the feed handling costs...
