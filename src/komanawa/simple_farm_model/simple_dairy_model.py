@@ -125,7 +125,7 @@ from scipy.optimize import minimize_scalar
 from copy import deepcopy
 import matplotlib.pyplot as plt
 
-from komanawa.simple_farm_model import calc_full_farm_stock_rate
+from komanawa.simple_farm_model.stock_rate_conversion import calc_full_farm_stock_rate
 from komanawa.simple_farm_model.run_multiprocess import run_multiprocess
 from komanawa.simple_farm_model.base_simple_farm_model import BaseSimpleFarmModel, month_len
 from komanawa.simple_farm_model.utils import leclose, geclose
