@@ -124,6 +124,8 @@ from numpy.core.numeric import allclose
 from scipy.optimize import minimize_scalar
 from copy import deepcopy
 import matplotlib.pyplot as plt
+
+from komanawa.simple_farm_model import calc_full_farm_stock_rate
 from komanawa.simple_farm_model.run_multiprocess import run_multiprocess
 from komanawa.simple_farm_model.base_simple_farm_model import BaseSimpleFarmModel, month_len
 from komanawa.simple_farm_model.utils import leclose, geclose
@@ -164,7 +166,8 @@ replacement_feed = {m: 6.4 * mj_per_kg_dm for m in range(1, 13)}
 lactating_feed = {k: v * 123.19 for k, v in daily_ms_prod.items()}  # assume 123.19 MJ ME/kg MS
 
 # (dairy platform density/ (1ha + area for 44% replacements at 2.82 cows/ha)
-default_peak_cow = 3.48 / (1 + (3.48 * 0.44 / 2.82))
+
+default_peak_cow = calc_full_farm_stock_rate(3.48)[0]  # 3.48 cows/ha
 
 
 class SimpleDairyModel(BaseSimpleFarmModel):
