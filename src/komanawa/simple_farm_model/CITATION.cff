@@ -1,0 +1,26 @@
+# This CITATION.cff file was generated with cffinit.
+# Visit https://bit.ly/cffinit to generate yours today!
+
+cff-version: 1.2.0
+title: Kōmanawa-simple-farm-model
+message: >-
+  If you use this software, please cite it using the
+  metadata from this file.
+type: software
+authors:
+  - given-names: Matt
+    family-names: Dumont
+    email: matt@komanawa.com
+    affiliation: Komanawa Solutions Ltd.
+    orcid: 'https://orcid.org/0009-0007-2974-0335'
+repository-code: >-
+  https://github.com/Komanawa-Solutions-Ltd/komanawa-simple-farm-model
+url: >-
+  https://komanawa-solutions-ltd.github.io/komanawa-simple-farm-model/
+abstract: >-
+    A simple, lightweight, and easily adaptable farm economic model for dairy farms in New Zealand.
+keywords:
+  - Dairy
+  - Farm Economic Model
+  - Python
+license: LGPL-3.0-or-later

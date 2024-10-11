@@ -10,7 +10,7 @@ from komanawa.simple_farm_model import default_peak_cow
 import numpy as np
 
 
-def speed_test(savedir=None):
+def speed_test(nyr=1, savedir=None):
     steps = [None, 0.05, 0.1, 0.15, 0.2, 5, 10, 15, 20, 30, 50]
     # note that for coarse mode, the step is used as the cull/dryoff level arg
     opt_modes = ['optimised', 'step', 'step', 'step', 'step', ] + ['coarse'] * 6
@@ -23,30 +23,19 @@ def speed_test(savedir=None):
     for lab, step, opt_mode in zip(step_labs, steps, opt_modes):
         t = time.time()
         (model_name, percent_imported, model_money, feed_cost, scar_cost, lac_frac,
-         dry_frac, model_feed) = run_model(step, opt_mode)
+         dry_frac, model_feed) = run_model(nyr, step, opt_mode)
         print(f'{model_name=}, {step=} took {time.time() - t} seconds', )
         outdata_money[(lab, model_name)] = model_money
         outdata_imported[(lab, model_name)] = percent_imported
         outdata_speed.loc[lab, model_name] = time.time() - t
-    outdata_money = {k: outdata_money[k] / outdata_money[('optimised-None', 'DairyModelWithSCScarcity')] for k in
-                     outdata_money}
-    outdata_imported = {k: outdata_imported[k] / outdata_imported[('optimised-None', 'DairyModelWithSCScarcity')] for k
-                        in
-                        outdata_imported}
-    outdata_money = pd.DataFrame(outdata_money).describe(percentiles)
-    outdata_imported = pd.DataFrame(outdata_imported).describe(percentiles)
     if savedir is not None:
         savedir = Path(savedir)
         savedir.mkdir(exist_ok=True)
-        outdata_money.round(3).to_csv(savedir.joinpath('speed_test_money.csv'))
-        outdata_imported.round(3).to_csv(savedir.joinpath('speed_test_imported.csv'))
         outdata_speed.round(2).to_csv(savedir.joinpath('speed_test_speed.csv'))
     print(outdata_speed)
-    print(outdata_money)
-    print(outdata_imported)
 
 
-def run_model(instep, opt_mode):
+def run_model(nyr, instep, opt_mode):
     mj_per_kg_dm = 11  # MJ ME /kg DM
     sup_cost = 406 / 1000 / mj_per_kg_dm
     product_price = 8.09
@@ -54,7 +43,11 @@ def run_model(instep, opt_mode):
     s, a, b, c = (11.4713, 2.0711, 1.9700, 20.4965)
 
     inpg = np.load(Path(__file__).parent.joinpath('test_data', 'eyrewell_pg.npz'))['inpg']
+    inpg = np.concatenate([inpg, inpg, inpg[:, :8]], axis=1)
+    all_months = np.concatenate([all_months] * nyr)
+    inpg = np.concatenate([inpg] * nyr, axis=0)
     nsims = inpg.shape[1]
+    print(f'Running {opt_mode} with step {instep}, {nsims} sims')
     if opt_mode == 'coarse':
         cull_level = dryoff_level = instep
         step = None
@@ -88,4 +81,5 @@ def run_model(instep, opt_mode):
 
 
 if __name__ == '__main__':
-    speed_test(Path.home().joinpath('Downloads', 'farm_speed_test'))
+    speed_test(1, Path.home().joinpath('Downloads', 'farm_speed_test'))
+    speed_test(10, Path.home().joinpath('Downloads', 'farm_speed_test_10'))
