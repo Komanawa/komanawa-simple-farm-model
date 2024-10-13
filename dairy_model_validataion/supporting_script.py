@@ -8,7 +8,7 @@ from komanawa.simple_farm_model import SimpleDairyModel
 from komanawa.simple_farm_model.simple_dairy_model import mj_per_kg_dm
 from op_expenses import get_operating_expenses
 
-# todo update macdonal_2011 with these features...
+
 def _plot_outputs(outdata,
                   stocking_rates, use_sup, ms_prod, expect_feed_demand,
                   xs, gross_rev, net_income, opt_expese,
@@ -125,6 +125,7 @@ def _plot_outputs(outdata,
 
     return fig, axs, fig_money, moneyaxs
 
+
 def _extract_data(dm, outdata, i, stock_rate, land_modifer=1, cow_modifer=1, add_sup_cost=0,
                   additional_stock_modifier=1, expense_modifier=1):
     assert issubclass(type(dm), SimpleDairyModel)
@@ -153,4 +154,3 @@ def _extract_data(dm, outdata, i, stock_rate, land_modifer=1, cow_modifer=1, add
     outdata.loc[i, 'total_expenses'] = outdata.loc[i, 'total_feed_cost'] + outdata.loc[i, 'op_expenses'] + \
                                        outdata.loc[i, 'feed_handling_cost']
     outdata.loc[i, 'net_income'] = outdata.loc[i, 'money'] - outdata.loc[i, 'op_expenses']
-

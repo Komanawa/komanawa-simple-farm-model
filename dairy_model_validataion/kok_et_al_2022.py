@@ -71,7 +71,7 @@ def get_pgr(year, site):
     return outdata
 
 
-class NoRepsDM(DairyModelWithSCScarcity):  # todo scarcity is necissary otherwise the model over imports...
+class NoRepsDM(DairyModelWithSCScarcity):  # scarcity is necissary otherwise the model over imports...
     feed_per_cow_replacement = {m: 0 for m in all_months}  # remove feed from replacements
     feed_per_cow_dry = use_dry_cow_feed  # remove feed from cows in June/July
     ndays_feed_import = 1
@@ -81,16 +81,12 @@ class NoRepsDMNoSupHandle(DairyModelWithSCScarcity):
     feed_per_cow_replacement = {m: 0 for m in all_months}  # remove feed from replacements
     feed_per_cow_dry = use_dry_cow_feed  # remove feed from cows in June/July
     ndays_feed_import = 1
-    sup_feedout_cost = 120 / 1000 / mj_per_kg_dm / 5  # todo halve the cost as a start measure
-    homegrown_storage_cost = 175 / 1000 / mj_per_kg_dm / 5  # todo halve the cost as a start measure
+    sup_feedout_cost = 120 / 1000 / mj_per_kg_dm / 5
+    homegrown_storage_cost = 175 / 1000 / mj_per_kg_dm / 5
     homegrown_store_efficiency = .85
-    # sup_feedout_cost = 0  # todo I think we also need to lessen this cost I think it's way to high... or it should only be applied to imported feed not the on-farm feed
-    # homegrown_storage_cost = 0  # todo we need to lessen this cost, I think it's way too high There is some component of the storage that applies on land...
+    # sup_feedout_cost = 0
+    # homegrown_storage_cost = 0
 
-
-# todo I think the homegrown storage efficiency is too low... some portion of this would certainly be stored on farm....
-#  75%*90% = 67.5%... too low as compared to 80% utilisation on farm,
-#  suggests using 85% which yields as total utilisation rate of  76.5%  less of a problem when the "stored" feed is stored on pasture...
 
 class NoRepsNoEff(DairyModelWithSCScarcity):
     supplemental_efficiency = 1
@@ -157,11 +153,8 @@ def make_data_no_pg_system(explore_plot=False):
     fig.savefig(outdir.joinpath('00_feed_passed_as_supplement.png'), dpi=300)
     fig_money.savefig(outdir.joinpath('00_feed_passed_as_supplement_money.png'), dpi=300)
 
+
 def make_data_silage_ifeed(explore_plot=False):
-    # todo save a cleaned up version of the "explore_plots"
-    # todo add running costs and see net income... super important...
-    # todo the limiting point for feed in these farms are the spring months (prior to the Nov,)  There must be surplus feed here that's not accounted for in the paper...
-    # todo I need higher imported feed to support the spring.
     base_feed_price = 400 / 1000 / mj_per_kg_dm
     outdata = pd.DataFrame(index=range(len((stocking_rates))))
     outdata['year'] = year
@@ -184,7 +177,7 @@ def make_data_silage_ifeed(explore_plot=False):
             ifeed = silage_supplement[i] * mj_per_kg_dm + ifeed_adder
 
             ifeed_based_on_dif = {'LUDF': 1000, 'LSR': 650,
-                                  'MSR': 1000}  # todo THIS REALLY HELPS THERE MUST BE "PASTURE STORED FEED"
+                                  'MSR': 1000}
             cs = {'LUDF': 7, 'LSR': 5, 'MSR': 15}
             dm = NoRepsDMNoSupHandle(all_months, istate=[0], pg=use_pg,
                                      ifeed=[ifeed + ifeed_based_on_dif[farm0] * stock_rate * mj_per_kg_dm],
@@ -254,8 +247,7 @@ def unmodified_comparison(explore_plot=False):
 
             ifeed = silage_supplement[i] * mj_per_kg_dm + ifeed_adder
 
-            ifeed_based_on_dif = {'LUDF': 1000, 'LSR': 650,
-                                  'MSR': 1000}  # todo THIS REALLY HELPS THERE MUST BE "PASTURE STORED FEED"
+            ifeed_based_on_dif = {'LUDF': 1000, 'LSR': 650, 'MSR': 1000}
             if year0 == 2018:
                 cs = {'LUDF': 4, 'LSR': 1, 'MSR': 19}
             else:
@@ -323,25 +315,26 @@ def unmodified_comparison(explore_plot=False):
     fig.savefig(outdir.joinpath('02_raw_full_system.png'), dpi=300)
     fig_money.savefig(outdir.joinpath('02_raw_full_system_money.png'), dpi=300)
 
-# todo save final plots, write up, and re-run tests
 
 def plot_pgr():
     fig, ax = plt.subplots(figsize=(6, 4))
-    colors = { 'MSR':'r', 'LSR':'b', 'LUDF':'orange'}
-    lss = {2018:'-', 2019:':'}
+    colors = {'MSR': 'r', 'LSR': 'b', 'LUDF': 'orange'}
+    lss = {2018: '-', 2019: ':'}
     for farm0, year0 in zip(farm, year):
-        ax.plot(range(len(all_months)), get_pgr(year0, farm0), label=f'{farm0}-{year0}', color=colors[farm0], ls=lss[year0], alpha=0.75)
+        ax.plot(range(len(all_months)), get_pgr(year0, farm0), label=f'{farm0}-{year0}', color=colors[farm0],
+                ls=lss[year0], alpha=0.75)
     ax.legend()
     ax.set_ylabel('Pasture Growth Rate ($kgDM~ha^{-1}day^{-1}$)')
     ax.set_xlabel('Month')
     ax.set_xticks(range(len(all_months)))
     ax.set_xticklabels(all_months)
-    ax.set_ylim(0,100)
+    ax.set_ylim(0, 100)
     fig.tight_layout()
     fig.savefig(outdir.joinpath('03_pgr.png'), dpi=300)
 
+
 if __name__ == '__main__':
     plot_pgr()
-    unmodified_comparison()  # todo this looks great!
-    make_data_no_pg_system()  # todo looking pretty good, even in money space (once feed handling cost is removed)
-    make_data_silage_ifeed()  # todo this matches pretty perfectly, but there is some silliness with the ifeed and the feed handling costs...
+    unmodified_comparison()
+    make_data_no_pg_system()
+    make_data_silage_ifeed()

@@ -762,9 +762,8 @@ class SimpleDairyModel(BaseSimpleFarmModel):
                     use_feed_cost=use_feed_cost,
                     current_cum_import=self.cum_feed_import[i_month - 1],
                     nsims=self.nsims,
-                    delay=delay)  # todo add a delay to the mitigation
+                    delay=delay)
 
-                # todo something is wrong... getting less feed deficit with time.... uggg
 
                 assert geclose(delay_future_product, 0).all()
                 assert geclose(delay_supplement_cost, 0).all()
@@ -774,8 +773,6 @@ class SimpleDairyModel(BaseSimpleFarmModel):
                     delay_future_product - delay_supplement_cost,
                 ])
                 delayed_mitigation = np.argmax(temp, axis=0) == 2
-                # todo check!
-                # todo write tests once I'm happy with this...
         else:
             delayed_mitigation = np.zeros(self.nsims, dtype=bool)
 
@@ -1409,7 +1406,6 @@ class SimpleDairyModel(BaseSimpleFarmModel):
         total_feed_needed = feed_needed_lact + feed_needed_dry + feed_needed_replacement
 
         current_home_production = self.convert_pg_to_me(use_pg, current_state) * self.homegrown_efficiency
-        # todo do I need to consider home grown store efficiency???, probably....
         current_stored_feed = current_feed
         deficit_feed = np.zeros(total_feed_needed.shape)
         for i in range(len(deficit_feed)):

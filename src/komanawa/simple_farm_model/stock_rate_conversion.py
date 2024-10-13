@@ -5,7 +5,7 @@ on: 10/8/24
 import numpy as np
 
 
-def calc_full_farm_stock_rate(milk_platform_sr): # todo incorporate this and write up!
+def calc_full_farm_stock_rate(milk_platform_sr):
     """
     calculate the peak cow (peak lactating cow /ha) for a full farm from the milk platform stocking rate.
 

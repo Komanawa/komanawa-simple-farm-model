@@ -27,7 +27,7 @@ ms_price = 6.75
 base_feed_price = 400 / 1000 / mj_per_kg_dm
 
 
-def read_data():  # todo
+def read_data():
     datadir = Path(__file__).parent
     paths = {
         2021: 'LUDF-2022-Data-Sheet-30-05-2022.csv',
@@ -82,7 +82,7 @@ class NoRepsDM(DairyModelWithSCScarcity):
     ndays_feed_import = 1
 
 
-def dairy_platform_run(explore_plot):  # todo
+def dairy_platform_run(explore_plot):
     a = 1
     b = 5
     s = 10
@@ -154,7 +154,7 @@ def dairy_platform_run(explore_plot):  # todo
         plt.savefig(outpath, dpi=300)
 
 
-def raw_full_farm_run(explore_plot):  # todo
+def raw_full_farm_run(explore_plot):
     s, a, b, c = (18.445, 1.611, 0.726, 26.792)
     alldata, use_pg, use_all_months = read_data()
     use_stock_rate, land_modifyer, cow_modifyer = calc_full_farm_stock_rate(mp_stocking_rate)
@@ -240,5 +240,5 @@ def raw_full_farm_run(explore_plot):  # todo
 
 
 if __name__ == '__main__':
-    dairy_platform_run(True)  # todo looking good I just need to clean up the plot.
-    raw_full_farm_run(True)  # todo looking good I just need to clean up the plot and save...
+    dairy_platform_run(True)
+    raw_full_farm_run(True)
