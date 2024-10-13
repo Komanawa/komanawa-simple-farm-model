@@ -340,8 +340,6 @@ def plot_pgr():
     fig.tight_layout()
     fig.savefig(outdir.joinpath('03_pgr.png'), dpi=300)
 
-# todo higher dpi plots!
-
 if __name__ == '__main__':
     plot_pgr()
     unmodified_comparison()  # todo this looks great!
