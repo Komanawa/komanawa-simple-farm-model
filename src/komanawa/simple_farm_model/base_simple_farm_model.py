@@ -754,7 +754,9 @@ class BaseSimpleFarmModel(object):
                     if sub_model is not None:
                         ylab_adder = ' self - sub'
                         yplot -= getattr(sub_model, sub_model.obj_dict[y])[:, sim][idx]
-                    ax.plot(use_x[idx], yplot, label=label, ls=ls, c=c, **kwargs)
+                    use_kwargs = deepcopy(kwargs)
+                    c = use_kwargs.pop('c', c)
+                    ax.plot(use_x[idx], yplot, label=label, ls=ls, c=c, **use_kwargs)
             else:
 
                 usey = getattr(self, self.obj_dict[y])[:, sims]

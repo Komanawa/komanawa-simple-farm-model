@@ -340,7 +340,7 @@ def plot_pgr():
     fig.tight_layout()
     fig.savefig(outdir.joinpath('03_pgr.png'))
 
-
+# todo higher dpi plots!
 
 if __name__ == '__main__':
     plot_pgr()
