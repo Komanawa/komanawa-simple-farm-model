@@ -127,8 +127,8 @@ def run_farm_model(explore_plot=False):
     fig_money.suptitle('Dairy Platform Only')
     fig.tight_layout()
     fig_money.tight_layout()
-    fig.savefig(outdir.joinpath('00_dairy_platform_only.png'))
-    fig_money.savefig(outdir.joinpath('00_dairy_platform_only_money.png'))
+    fig.savefig(outdir.joinpath('00_dairy_platform_only.png'), dpi=300)
+    fig_money.savefig(outdir.joinpath('00_dairy_platform_only_money.png'), dpi=300)
 
 
 def run_farm_model_no_mod(explore_plot=False):
@@ -173,7 +173,7 @@ def run_farm_model_no_mod(explore_plot=False):
 
                       # cow_modifer=cow_modifyer, land_modifer=land_modifyer,
                       add_sup_cost=0,
-                      additional_stock_modifier=1,expense_modifier=0.73 )
+                      additional_stock_modifier=1, expense_modifier=0.73)
     base_idx = 3
     fig, axs, fig_money, moneyaxs = _plot_outputs(outdata,
                                                   stocking_rates,
@@ -194,9 +194,8 @@ def run_farm_model_no_mod(explore_plot=False):
     fig.tight_layout()
     fig_money.tight_layout()
 
-    fig.savefig(outdir.joinpath('01_adj_full_system_similar_imports.png'))
-    fig_money.savefig(outdir.joinpath('01_adj_full_system_similar_imports_money.png'))
-
+    fig.savefig(outdir.joinpath('01_adj_full_system_similar_imports.png'), dpi=300)
+    fig_money.savefig(outdir.joinpath('01_adj_full_system_similar_imports_money.png'), dpi=300)
 
     fig_raw, axs_raw, fig_money_raw, moneyaxs_raw = _plot_outputs(outdata_raw,
                                                                   stocking_rates,
@@ -219,8 +218,8 @@ def run_farm_model_no_mod(explore_plot=False):
     fig_money_raw.suptitle('Full System - Similar Imports\nRaw values')
     fig_raw.tight_layout()
     fig_money_raw.tight_layout()
-    fig_raw.savefig(outdir.joinpath('01_raw_full_system_similar_imports.png'))
-    fig_money_raw.savefig(outdir.joinpath('01_raw_full_system_similar_imports_money.png'))
+    fig_raw.savefig(outdir.joinpath('01_raw_full_system_similar_imports.png'), dpi=300)
+    fig_money_raw.savefig(outdir.joinpath('01_raw_full_system_similar_imports_money.png'), dpi=300)
 
 
 def run_farm_model_no_mod_no_feed_limit(explore_plot=False):
@@ -284,8 +283,8 @@ def run_farm_model_no_mod_no_feed_limit(explore_plot=False):
     fig_money.suptitle('Full System - Less Feed Constrained\nAdjusted for dairy platform size')
     fig.tight_layout()
     fig_money.tight_layout()
-    fig.savefig(outdir.joinpath('02_adj_full_system_less_feed_constrained.png'))
-    fig_money.savefig(outdir.joinpath('02_adj_full_system_less_feed_constrained_money.png'))
+    fig.savefig(outdir.joinpath('02_adj_full_system_less_feed_constrained.png'), dpi=300)
+    fig_money.savefig(outdir.joinpath('02_adj_full_system_less_feed_constrained_money.png'), dpi=300)
 
     fig_raw, axs_raw, fig_money_raw, moneyaxs_raw = _plot_outputs(outdata_raw,
                                                                   stocking_rates,
@@ -307,8 +306,8 @@ def run_farm_model_no_mod_no_feed_limit(explore_plot=False):
     fig_money_raw.suptitle('Full System - Less Feed Constrained\nRaw values')
     fig_raw.tight_layout()
     fig_money_raw.tight_layout()
-    fig_raw.savefig(outdir.joinpath('02_raw_full_system_less_feed_constrained.png'))
-    fig_money_raw.savefig(outdir.joinpath('02_raw_full_system_less_feed_constrained_money.png'))
+    fig_raw.savefig(outdir.joinpath('02_raw_full_system_less_feed_constrained.png'), dpi=300)
+    fig_money_raw.savefig(outdir.joinpath('02_raw_full_system_less_feed_constrained_money.png'), dpi=300)
 
 
 if __name__ == '__main__':

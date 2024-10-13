@@ -154,8 +154,8 @@ def make_data_no_pg_system(explore_plot=False):
     fig_money.suptitle('Feed passed as Supplement')
     fig.tight_layout()
     fig_money.tight_layout()
-    fig.savefig(outdir.joinpath('00_feed_passed_as_supplement.png'))
-    fig_money.savefig(outdir.joinpath('00_feed_passed_as_supplement_money.png'))
+    fig.savefig(outdir.joinpath('00_feed_passed_as_supplement.png'), dpi=300)
+    fig_money.savefig(outdir.joinpath('00_feed_passed_as_supplement_money.png'), dpi=300)
 
 def make_data_silage_ifeed(explore_plot=False):
     # todo save a cleaned up version of the "explore_plots"
@@ -218,8 +218,8 @@ def make_data_silage_ifeed(explore_plot=False):
     fig_money.suptitle('Pasture Based Dairy Platform')
     fig.tight_layout()
     fig_money.tight_layout()
-    fig.savefig(outdir.joinpath('01_pasture_based_dairy_platform.png'))
-    fig_money.savefig(outdir.joinpath('01_pasture_based_dairy_platform_money.png'))
+    fig.savefig(outdir.joinpath('01_pasture_based_dairy_platform.png'), dpi=300)
+    fig_money.savefig(outdir.joinpath('01_pasture_based_dairy_platform_money.png'), dpi=300)
 
 
 class ModFeedHandle(DairyModelWithSCScarcity):
@@ -305,8 +305,8 @@ def unmodified_comparison(explore_plot=False):
     fig_money.suptitle('Full System\nAdjusted for dairy platform size')
     fig.tight_layout()
     fig_money.tight_layout()
-    fig.savefig(outdir.joinpath('02_adj_full_system.png'))
-    fig_money.savefig(outdir.joinpath('02_adj_full_system_money.png'))
+    fig.savefig(outdir.joinpath('02_adj_full_system.png'), dpi=300)
+    fig_money.savefig(outdir.joinpath('02_adj_full_system_money.png'), dpi=300)
 
     fig, axs, fig_money, moneyaxs = _plot_outputs(outdata_raw,
                                                   stocking_rates, use_sup, ms_prod, expect_feed_demand,
@@ -320,8 +320,8 @@ def unmodified_comparison(explore_plot=False):
     fig_money.suptitle('Full System\nRaw values')
     fig.tight_layout()
     fig_money.tight_layout()
-    fig.savefig(outdir.joinpath('02_raw_full_system.png'))
-    fig_money.savefig(outdir.joinpath('02_raw_full_system_money.png'))
+    fig.savefig(outdir.joinpath('02_raw_full_system.png'), dpi=300)
+    fig_money.savefig(outdir.joinpath('02_raw_full_system_money.png'), dpi=300)
 
 # todo save final plots, write up, and re-run tests
 
@@ -338,7 +338,7 @@ def plot_pgr():
     ax.set_xticklabels(all_months)
     ax.set_ylim(0,100)
     fig.tight_layout()
-    fig.savefig(outdir.joinpath('03_pgr.png'))
+    fig.savefig(outdir.joinpath('03_pgr.png'), dpi=300)
 
 # todo higher dpi plots!
 

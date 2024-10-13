@@ -2,7 +2,7 @@
 created matt_dumont 
 on: 10/12/24
 """
-from datetime import datetime
+import datetime
 
 import pandas as pd
 from pathlib import Path
@@ -114,7 +114,7 @@ def dairy_platform_run(explore_plot):  # todo
 
     if explore_plot:
         stitle = (f'Dairy Platform Only {mp_stocking_rate} '
-                + '$cows~ha^{-1}$')
+                  + '$cows~ha^{-1}$')
         fig, axs = dm.plot_results('feed', 'per_feed_import', 'cum_feed_import', c='r', start_year=2021)
         fig.suptitle(stitle)
         fig, axs = dm.plot_results('lactating_cow_fraction', 'feed_dry', 'feed_lactating', c='r', start_year=2021)
@@ -132,8 +132,26 @@ def dairy_platform_run(explore_plot):  # todo
 
         for y, data in alldata.items():
             axs[1].plot(data.index, (data['supplement_feed'] * 7 * mj_per_kg_dm).cumsum(), color='b')
-        plt.show()
 
+        axs[0].set_ylabel('Cum. Production\n($kg~MS~ha^{-1}$)')
+        axs[1].set_ylabel('Ann. Cum. Feed import\n($ton~DM~ha^{-1}$)')
+        axs[2].set_ylabel('Cum. Feed Demand\n($ton~DM~ha^{-1}$)')
+        lims = [3.5, 60]
+        steps = [0.5, 10]
+        for ax, lim, step in zip(axs[1:], lims, steps):
+            ax.set_ylim([-step * 1000 * mj_per_kg_dm / 2, lim * 1000 * mj_per_kg_dm])
+            ticks = np.arange(0, lim + step, step)
+            ax.set_yticks(ticks * 1000 * mj_per_kg_dm)
+            ax.set_yticklabels([f'{t:.1f}' for t in ticks])
+        leg_handles = [plt.Line2D([0], [0], color='b', label='LUDF Data'),
+                       plt.Line2D([0], [0], color='r', label='Model'),
+                       ]
+        axs[2].legend(handles=leg_handles, loc='upper left')
+        fig.tight_layout()
+        outdir = Path(__file__).parent.joinpath('LUDF')
+        outdir.mkdir(exist_ok=True)
+        outpath = outdir.joinpath('milk_platform_farm_run.png')
+        plt.savefig(outpath, dpi=300)
 
 
 def raw_full_farm_run(explore_plot):  # todo
@@ -159,6 +177,11 @@ def raw_full_farm_run(explore_plot):  # todo
     dm.long_name_dict['cum_feed_demand'] = 'Cumulative Feed Demand'
     dm.obj_dict['cum_feed_demand'] = 'cum_feed_demand'
     dm.cum_feed_demand = np.nancumsum(dm.model_feed_demand, axis=0)
+
+    dm.long_name_dict['cum_lact_feed'] = 'Cumulative Lactating Feed'
+    dm.obj_dict['cum_lact_feed'] = 'cum_lact_feed'
+    dm.cum_lact_feed = np.nancumsum(dm.out_feed_lactating, axis=0)
+
     dm.long_name_dict['cum_prod'] = 'Cumulative Production'
     dm.obj_dict['cum_prod'] = 'cum_prod'
     dm.cum_prod = np.nancumsum(dm.model_prod, axis=0)
@@ -186,8 +209,34 @@ def raw_full_farm_run(explore_plot):  # todo
 
         for y, data in alldata.items():
             axs[1].plot(data.index, (data['supplement_feed'] * 7 * mj_per_kg_dm * land_modifyer).cumsum(), color='b')
-        plt.show()
 
+        use_year = np.cumsum((dm.all_days == 1) & (dm.all_months == 1))
+        base_xtime = np.array([datetime.date(year=2021 + yr, month=m, day=d) for yr, m, d in
+                               zip(use_year[1:], dm.all_months[1:], dm.all_days[1:])])
+        axs[2].plot(base_xtime, dm.cum_lact_feed[1:], color='r', ls='--')
+
+        axs[0].set_ylabel('Cum. Production\n($kg~MS~ha^{-1}$)')
+        axs[1].set_ylabel('Ann. Cum. Feed import\n($ton~DM~ha^{-1}$)')
+        axs[2].set_ylabel('Cum. Feed Demand\n($ton~DM~ha^{-1}$)')
+        lims = [2.5, 50]
+        steps = [0.5, 10]
+        for ax, lim, step in zip(axs[1:], lims, steps):
+            ax.set_ylim([-step * 1000 * mj_per_kg_dm / 2, lim * 1000 * mj_per_kg_dm])
+            ticks = np.arange(0, lim + step, step)
+            ax.set_yticks(ticks * 1000 * mj_per_kg_dm)
+            ax.set_yticklabels([f'{t:.1f}' for t in ticks])
+        leg_handles = [plt.Line2D([0], [0], color='b', label='LUDF Data'),
+                       plt.Line2D([0], [0], color='r', label='Model'),
+                       plt.Line2D([0], [0], color='r', label='Model - Lact. Feed Only', ls='--'),
+                       ]
+        axs[2].legend(handles=leg_handles, loc='upper left')
+        fig.tight_layout()
+        outdir = Path(__file__).parent.joinpath('LUDF')
+        outdir.mkdir(exist_ok=True)
+        outpath = outdir.joinpath('full_farm_run.png')
+        plt.savefig(outpath, dpi=300)
+
+        plt.show()
 
 
 if __name__ == '__main__':
