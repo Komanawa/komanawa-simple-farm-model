@@ -108,6 +108,19 @@ def run_farm_model(explore_plot=False):
 
         _extract_data(dm, outdata, i, stock_rate, land_modifer=1, cow_modifer=1, add_sup_cost=0,
                       additional_stock_modifier=1, expense_modifier=0.73)
+    export_data = pd.DataFrame(index=[f'M. {s0}' for s0 in stocking_rates])
+    export_data['prod_mod'] = outdata['total_prod'].values
+    export_data['prod_mes'] = total_ms_yeild
+    export_data['feed_d_mod']= outdata['total_feed_demand'].values
+    export_data['feed_d_mes']= total_feed_demand
+    export_data['feed_i_mod'] = outdata['feed_import'].values
+    export_data['feed_i_mes'] = purchased_sup
+    export_data['gross_mod'] = outdata['total_prod_money'].values
+    export_data['gross_mes'] = expect_milk_prod_price
+    export_data['exp_mod'] = outdata['total_expenses'].values
+    export_data['exp_mes'] = opt_expenses
+    export_data['net_mod'] = outdata['net_income'].values
+    export_data['net_mes'] = expect_net_income
     base_idx = 3
     fig, axs, fig_money, moneyaxs = _plot_outputs(outdata,
                                                   stocking_rates,
@@ -129,6 +142,7 @@ def run_farm_model(explore_plot=False):
     fig_money.tight_layout()
     fig.savefig(outdir.joinpath('00_dairy_platform_only.png'), dpi=300)
     fig_money.savefig(outdir.joinpath('00_dairy_platform_only_money.png'), dpi=300)
+    return export_data
 
 
 def run_farm_model_no_mod(explore_plot=False):
@@ -174,6 +188,20 @@ def run_farm_model_no_mod(explore_plot=False):
                       # cow_modifer=cow_modifyer, land_modifer=land_modifyer,
                       add_sup_cost=0,
                       additional_stock_modifier=1, expense_modifier=0.73)
+
+    export_data = pd.DataFrame(index=[f'M. {s0}' for s0 in stocking_rates])
+    export_data['prod_mod'] = outdata['total_prod'].values
+    export_data['prod_mes'] = total_ms_yeild
+    export_data['feed_d_mod']= outdata['total_feed_demand'].values
+    export_data['feed_d_mes']= total_feed_demand
+    export_data['feed_i_mod'] = outdata['feed_import'].values
+    export_data['feed_i_mes'] = purchased_sup
+    export_data['gross_mod'] = outdata['total_prod_money'].values
+    export_data['gross_mes'] = expect_milk_prod_price
+    export_data['exp_mod'] = outdata['total_expenses'].values
+    export_data['exp_mes'] = opt_expenses
+    export_data['net_mod'] = outdata['net_income'].values
+    export_data['net_mes'] = expect_net_income
     base_idx = 3
     fig, axs, fig_money, moneyaxs = _plot_outputs(outdata,
                                                   stocking_rates,
@@ -220,6 +248,7 @@ def run_farm_model_no_mod(explore_plot=False):
     fig_money_raw.tight_layout()
     fig_raw.savefig(outdir.joinpath('01_raw_full_system_similar_imports.png'), dpi=300)
     fig_money_raw.savefig(outdir.joinpath('01_raw_full_system_similar_imports_money.png'), dpi=300)
+    return export_data
 
 
 def run_farm_model_no_mod_no_feed_limit(explore_plot=False):

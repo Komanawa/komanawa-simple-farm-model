@@ -27,6 +27,7 @@ outdir.mkdir(exist_ok=True)
 
 year = [2018, 2018, 2018, 2019, 2019, 2019]
 farm = ['LUDF', 'LSR', 'MSR', 'LUDF', 'LSR', 'MSR']
+farm_uniq = ['LUDF-1', 'LSR-1', 'MSR-1', 'LUDF-2', 'LSR-2', 'MSR-2']
 xs = [0, 3, 1, 4, 2, 5]
 stocking_rates = np.array([3.4, 2.9, 3.9, 3.4, 2.9, 3.9])
 pasture_prod = np.array([19.7, 15.8, 16.5, 19.4, 16.6, 16.1]) * 1000  # kg DM/ha
@@ -199,6 +200,21 @@ def make_data_silage_ifeed(explore_plot=False):
     use_sup = barly_supp
     xticks = [f'{f}-{y - 2000} {r}' + ' $c.ha^{-1}$' for y, f, r in
               zip(np.array(year)[xs], np.array(farm)[xs], stocking_rates[xs])]
+
+    export_data = pd.DataFrame(index=farm_uniq)
+    export_data['prod_mod'] = outdata['total_prod'].values
+    export_data['prod_mes'] = ms_prod
+    export_data['feed_d_mod'] = outdata['total_feed_demand'].values
+    export_data['feed_d_mes'] = expect_feed_demand
+    export_data['feed_i_mod'] = outdata['feed_import'].values
+    export_data['feed_i_mes'] = use_sup
+    export_data['gross_mod'] = outdata['total_prod_money'].values
+    export_data['gross_mes'] = gross_rev
+    export_data['exp_mod'] = outdata['total_expenses'].values
+    export_data['exp_mes'] = opt_expese
+    export_data['net_mod'] = outdata['net_income'].values
+    export_data['net_mes'] = net_income
+
     fig, axs, fig_money, moneyaxs = _plot_outputs(outdata,
                                                   stocking_rates, use_sup, ms_prod, expect_feed_demand,
                                                   xs, gross_rev, net_income, opt_expese,
@@ -213,6 +229,8 @@ def make_data_silage_ifeed(explore_plot=False):
     fig_money.tight_layout()
     fig.savefig(outdir.joinpath('01_pasture_based_dairy_platform.png'), dpi=300)
     fig_money.savefig(outdir.joinpath('01_pasture_based_dairy_platform_money.png'), dpi=300)
+
+    return export_data
 
 
 class ModFeedHandle(DairyModelWithSCScarcity):
@@ -283,6 +301,21 @@ def unmodified_comparison(explore_plot=False):
         print(outdata['last_feed'])
 
     use_sup = barly_supp
+
+    export_data = pd.DataFrame(index=farm_uniq)
+    export_data['prod_mod'] = outdata['total_prod'].values
+    export_data['prod_mes'] = ms_prod
+    export_data['feed_d_mod'] = outdata['total_feed_demand'].values
+    export_data['feed_d_mes'] = expect_feed_demand
+    export_data['feed_i_mod'] = outdata['feed_import'].values
+    export_data['feed_i_mes'] = use_sup
+    export_data['gross_mod'] = outdata['total_prod_money'].values
+    export_data['gross_mes'] = gross_rev
+    export_data['exp_mod'] = outdata['total_expenses'].values
+    export_data['exp_mes'] = opt_expese
+    export_data['net_mod'] = outdata['net_income'].values
+    export_data['net_mes'] = net_income
+
     xticks = [f'{f}-{y - 2000} {r}' + ' $c.ha^{-1}$' for y, f, r in
               zip(np.array(year)[xs], np.array(farm)[xs], stocking_rates[xs])]
     fig, axs, fig_money, moneyaxs = _plot_outputs(outdata,
@@ -314,6 +347,8 @@ def unmodified_comparison(explore_plot=False):
     fig_money.tight_layout()
     fig.savefig(outdir.joinpath('02_raw_full_system.png'), dpi=300)
     fig_money.savefig(outdir.joinpath('02_raw_full_system_money.png'), dpi=300)
+
+    return export_data
 
 
 def plot_pgr():

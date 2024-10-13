@@ -112,6 +112,23 @@ def dairy_platform_run(explore_plot):
     dm.obj_dict['cum_prod'] = 'cum_prod'
     dm.cum_prod = np.nancumsum(dm.model_prod, axis=0)
 
+    export_data = pd.DataFrame()
+    for i, (y, basedata) in enumerate(alldata.items()):
+        si = i * 365 + 1
+        ei = si + 365
+        export_data.loc[y, 'prod_mod'] = np.nansum(dm.model_prod[si:ei])
+        export_data.loc[y, 'prod_mes'] = basedata['production'].sum() * 7
+        export_data.loc[y, 'feed_d_mod'] = np.nansum(dm.model_feed_demand[si:ei]) / mj_per_kg_dm
+        export_data.loc[y, 'feed_d_mes'] = basedata['feed_demand'].sum() * 7
+        export_data.loc[y, 'feed_i_mod'] = np.nansum(dm.model_feed_imported[si:ei]) / mj_per_kg_dm
+        export_data.loc[y, 'feed_i_mes'] = basedata['supplement_feed'].sum() * 7
+        export_data.loc[y, 'gross_mod'] = np.nansum(dm.model_prod_money[si:ei])
+        export_data.loc[y, 'gross_mes'] = basedata['production'].sum() * ms_price * 7
+        export_data.loc[y, 'exp_mod'] = np.nan
+        export_data.loc[y, 'exp_mes'] = np.nan
+        export_data.loc[y, 'net_mod'] = np.nan
+        export_data.loc[y, 'net_mes'] = np.nan
+
     if explore_plot:
         stitle = (f'Dairy Platform Only {mp_stocking_rate} '
                   + '$cows~ha^{-1}$')
@@ -152,6 +169,7 @@ def dairy_platform_run(explore_plot):
         outdir.mkdir(exist_ok=True)
         outpath = outdir.joinpath('milk_platform_farm_run.png')
         plt.savefig(outpath, dpi=300)
+    return export_data
 
 
 def raw_full_farm_run(explore_plot):
@@ -185,6 +203,23 @@ def raw_full_farm_run(explore_plot):
     dm.long_name_dict['cum_prod'] = 'Cumulative Production'
     dm.obj_dict['cum_prod'] = 'cum_prod'
     dm.cum_prod = np.nancumsum(dm.model_prod, axis=0)
+
+    export_data = pd.DataFrame()
+    for i, (y, basedata) in enumerate(alldata.items()):
+        si = i * 365 + 1
+        ei = si + 365
+        export_data.loc[y, 'prod_mod'] = np.nansum(dm.model_prod[si:ei]) / land_modifyer
+        export_data.loc[y, 'prod_mes'] = basedata['production'].sum() * 7
+        export_data.loc[y, 'feed_d_mod'] = np.nansum(dm.out_feed_lactating[si:ei]) / land_modifyer / mj_per_kg_dm
+        export_data.loc[y, 'feed_d_mes'] = basedata['feed_demand'].sum() * 7
+        export_data.loc[y, 'feed_i_mod'] = np.nansum(dm.model_feed_imported[si:ei]) / land_modifyer / mj_per_kg_dm
+        export_data.loc[y, 'feed_i_mes'] = basedata['supplement_feed'].sum() * 7
+        export_data.loc[y, 'gross_mod'] = np.nansum(dm.model_prod_money[si:ei]) / land_modifyer
+        export_data.loc[y, 'gross_mes'] = basedata['production'].sum() * 7 *ms_price
+        export_data.loc[y, 'exp_mod'] = np.nan
+        export_data.loc[y, 'exp_mes'] = np.nan
+        export_data.loc[y, 'net_mod'] = np.nan
+        export_data.loc[y, 'net_mes'] = np.nan
 
     if explore_plot:
         stitle = (
@@ -237,6 +272,7 @@ def raw_full_farm_run(explore_plot):
         plt.savefig(outpath, dpi=300)
 
         plt.show()
+    return export_data
 
 
 if __name__ == '__main__':
