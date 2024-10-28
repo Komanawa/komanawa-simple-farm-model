@@ -83,10 +83,6 @@ class NoRepsDM(DairyModelWithSCScarcity):
 
 
 def dairy_platform_run(explore_plot):
-    a = 1
-    b = 5
-    s = 10
-    c = 20
     s, a, b, c = (18.445, 1.611, 0.726, 26.792)
     alldata, use_pg, use_all_months = read_data()
     ifeed = 600 * mj_per_kg_dm

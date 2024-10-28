@@ -368,7 +368,94 @@ def plot_pgr():
     fig.savefig(outdir.joinpath('03_pgr.png'), dpi=300)
 
 
+def kok_slmacc_model():
+    base_feed_price = 400 / 1000 / mj_per_kg_dm
+    outdata = pd.DataFrame(index=range(len((stocking_rates))))
+    outdata_raw = pd.DataFrame(index=range(len((stocking_rates))))
+    outdata['year'] = year
+    outdata_raw['year'] = year
+    outdata['farm'] = farm
+    outdata_raw['farm'] = farm
+    outdata['stocking_rate'] = stocking_rates
+    outdata_raw['stocking_rate'] = stocking_rates
+    s, a, b, c = (18.445, 1.611, 0.726, 26.792)
+
+    for n in range(1):
+        for i, stock_rate in enumerate(stocking_rates):
+            year0 = year[i]
+            farm0 = farm[i]
+            use_pg = get_pgr(year0, farm0)
+            if n == 0:
+                ifeed_adder = 0
+            else:
+                ifeed_adder = outdata.loc[i, 'last_feed'] * mj_per_kg_dm
+
+            ifeed = silage_supplement[i] * mj_per_kg_dm + ifeed_adder
+
+            ifeed_based_on_dif = {'LUDF': 1000, 'LSR': 650, 'MSR': 1000}
+
+            # modify stock rate
+            use_stock_rate, land_modifyer, cow_modifyer = calc_full_farm_stock_rate(stock_rate)
+            ifeed = 600 * mj_per_kg_dm * land_modifyer
+
+            dm = ModFeedHandle(all_months, istate=[0], pg=use_pg,
+                               ifeed=[ifeed],
+                               # ifeed based on 4 rounds of 1500 kg DM/ha
+                               imoney=[0], sup_feed_cost=base_feed_price, product_price=ms_price,
+                               monthly_input=True,
+                               peak_lact_cow_per_ha=use_stock_rate, ncore_opt=1,
+                               logging_level=logging.CRITICAL,
+                               cull_dry_step=None, opt_mode='coarse',
+                               cull_levels=100, dryoff_levels=100,
+                               s=s, a=a, b=b, c=c)
+            dm.run_model()
+            _extract_data(dm, outdata, i, stock_rate, cow_modifer=cow_modifyer,
+                          land_modifer=land_modifyer,
+                          additional_stock_modifier=1)
+            _extract_data(dm, outdata_raw, i, stock_rate,
+                          additional_stock_modifier=1)
+        print(outdata['last_feed'])
+
+    use_sup = barly_supp
+
+    export_data = pd.DataFrame(index=farm_uniq)
+    export_data['prod_mod'] = outdata['total_prod'].values
+    export_data['prod_mes'] = ms_prod
+    export_data['feed_d_mod'] = outdata['total_feed_demand'].values
+    export_data['feed_d_mes'] = expect_feed_demand
+    export_data['feed_i_mod'] = outdata['feed_import'].values
+    export_data['feed_i_mes'] = use_sup
+    export_data['gross_mod'] = outdata['total_prod_money'].values
+    export_data['gross_mes'] = gross_rev
+    export_data['exp_mod'] = outdata['total_expenses'].values
+    export_data['exp_mes'] = opt_expese
+    export_data['net_mod'] = outdata['net_income'].values
+    export_data['net_mes'] = net_income
+
+    xticks = [f'{f}-{y - 2000} {r}' + ' $c.ha^{-1}$' for y, f, r in
+              zip(np.array(year)[xs], np.array(farm)[xs], stocking_rates[xs])]
+    fig, axs, fig_money, moneyaxs = _plot_outputs(outdata,
+                                                  stocking_rates, use_sup, ms_prod, expect_feed_demand,
+                                                  xs, gross_rev, net_income, opt_expese,
+                                                  study_name='Kok et al. (2022)',
+                                                  rel_lab='LUDF 2018,',
+                                                  xticklabs=xticks,
+                                                  base_x=0,
+                                                  plot_rel=False, plot_money_rel=True)
+    fig.suptitle('Full System\nAdjusted for dairy platform size')
+    fig_money.suptitle('Full System\nAdjusted for dairy platform size')
+    fig.tight_layout()
+    fig_money.tight_layout()
+    fig.savefig(outdir.joinpath('03_unbounded_full_system.png'), dpi=300)
+    fig_money.savefig(outdir.joinpath('03_unbounded_full_system_money.png'), dpi=300)
+
+    return export_data
+
+
+
+
 if __name__ == '__main__':
+    t = kok_slmacc_model()
     plot_pgr()
     unmodified_comparison()
     make_data_no_pg_system()
