@@ -1,0 +1,37 @@
+komanawa.simple_farm_model.run_multiprocess
+===========================================
+
+.. py:module:: komanawa.simple_farm_model.run_multiprocess
+
+.. autoapi-nested-parse::
+
+   created matt_dumont 
+   on: 8/24/24
+
+
+
+Functions
+---------
+
+.. autoapisummary::
+
+   komanawa.simple_farm_model.run_multiprocess.run_multiprocess
+
+
+Module Contents
+---------------
+
+.. py:function:: run_multiprocess(func, runs, logical=True, num_cores=None, logging_level=logging.INFO, constant_kwargs=None, subprocess_cores=1)
+
+   count the number of processors and then instiute the runs of a function to
+
+   :param func: function with one argument kwargs.
+   :param runs: a list of runs to pass to the function the function is called via func(kwargs)
+   :param num_cores: int or None, if None then use all cores (+-logical) if int, set pool size to number of cores
+   :param logical: bool if True then add the logical processors to the count
+   :param logging_level: logging level to use one of: logging.DEBUG, logging.INFO, logging.WARNING, logging.ERROR, logging.CRITICAL more info https://docs.python.org/3/howto/logging.html default is logging.INFO
+   :param constant_kwargs: dict of kwargs to pass to func each time it is called, these kwargs are constant across all runs.
+   :param subprocess_cores: int a number of cores needed for a subprocess (e.g. if the subprocess needs 5 cores to run then only create ncores//5 processes
+   :return:
+
+

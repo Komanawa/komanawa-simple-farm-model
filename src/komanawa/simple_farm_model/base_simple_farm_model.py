@@ -856,7 +856,7 @@ class BaseSimpleFarmModel(object):
         return next_state
 
     def output_eq(self, other, raise_on_diff=False, skip_alt_kwargs=None, compare_idx=None,
-                  dimensionality_only=False):
+                  dimensionality_only=False, rtol=1e-05):
         """
         check if two models are equal
 
@@ -934,7 +934,7 @@ class BaseSimpleFarmModel(object):
                 else:
                     temp_self = temp_self[compare_idx]
                     temp_other = temp_other[compare_idx]
-            if not np.allclose(temp_self, temp_other, equal_nan=True):
+            if not np.allclose(temp_self, temp_other, equal_nan=True, rtol=rtol):
                 different.append(v)
         if len(missing) > 0:
             if raise_on_diff:

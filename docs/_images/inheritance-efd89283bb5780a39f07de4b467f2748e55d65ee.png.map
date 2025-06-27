@@ -1,0 +1,4 @@
+<map id="inheritancef24166cd3f" name="inheritancef24166cd3f">
+<area shape="rect" id="node1" href="#komanawa.simple_farm_model.base_simple_farm_model.BaseSimpleFarmModel" target="_top" title="Abstract base class for a simple farm economic model." alt="" coords="5,5,176,31"/>
+<area shape="rect" id="node2" href="#komanawa.simple_farm_model.base_simple_farm_model.DummySimpleFarm" target="_top" title="DummySimpleFarm" alt="" coords="224,5,375,31"/>
+</map>

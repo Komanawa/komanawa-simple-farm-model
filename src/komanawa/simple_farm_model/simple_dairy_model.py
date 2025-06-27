@@ -525,7 +525,7 @@ class SimpleDairyModel(BaseSimpleFarmModel):
         assert isinstance(current_state, np.ndarray), f'current_state must be np.ndarray, got {type(current_state)}'
         assert current_state.shape == (
             self.model_shape[1],), f'current_state must be shape {self.model_shape[1]}, got {current_state.shape}'
-        idxs = np.in1d(current_state, self.milk_1_aday_states)
+        idxs = np.isin(current_state, self.milk_1_aday_states)
         feed_lactating = self.feed_per_cow_lactating[month] * self.lactating_cow_fraction * self.peak_lact_cow_per_ha
         feed_lactating[idxs] *= self.feed_fraction_1aday
         self.out_feed_lactating[i_month] = feed_lactating
@@ -541,7 +541,7 @@ class SimpleDairyModel(BaseSimpleFarmModel):
     def calculate_production(self, i_month, month, current_state):
         max_production = (self.kgms_per_lac_cow[month]
                           * (self.peak_lact_cow_per_ha * self.lactating_cow_fraction).round(self.precision))
-        idxs = np.in1d(current_state, self.milk_1_aday_states)
+        idxs = np.isin(current_state, self.milk_1_aday_states)
         max_production[idxs] *= self.one_a_daymilk_production_fraction
         return max_production
 
@@ -747,7 +747,7 @@ class SimpleDairyModel(BaseSimpleFarmModel):
             if delay == 0:
                 delayed_mitigation = np.zeros(self.nsims, dtype=bool)
             else:
-                once_aday_idx = np.in1d(current_state, self.milk_1_aday_states)
+                once_aday_idx = np.isin(current_state, self.milk_1_aday_states)
                 to_once_aday_idx = next_action == 3
                 delay_future_product, delay_supplement_cost, delay_deficit_feed = self._calc_cost_production(
                     i_month=i_month,
@@ -829,7 +829,7 @@ class SimpleDairyModel(BaseSimpleFarmModel):
     def _calc_current_state_future(self, i_month, remaining_months, current_state, use_pg, current_feed,
                                    use_prod_price, use_feed_cost, current_cum_import):
 
-        current_1day_idxs = np.in1d(current_state, self.milk_1_aday_states)
+        current_1day_idxs = np.isin(current_state, self.milk_1_aday_states)
         future_product, supplement_cost, deficit_feed = self._calc_cost_production(
             i_month=i_month,
             remaining_months=remaining_months,
@@ -852,7 +852,7 @@ class SimpleDairyModel(BaseSimpleFarmModel):
     def _prep_alt_data(self, month, current_state):
         next_action = self.calc_next_state_quant(month, current_state)
         to_once_aday_idx = next_action == 3
-        once_aday_idx = np.in1d(current_state, self.milk_1_aday_states)
+        once_aday_idx = np.isin(current_state, self.milk_1_aday_states)
         no_change_idx = next_action == 0
         cull_idx = next_action == 1
         dryoff_idx = next_action == 2
@@ -1169,7 +1169,7 @@ class SimpleDairyModel(BaseSimpleFarmModel):
             # 1. once-a-day milking
             # 2. this cull up to the replacement rate (no on-going feed requirement)
             # 3. Post this dry-off (significantly reduced feed demand).
-            once_idx = np.in1d(current_state, self.milk_1_aday_states)
+            once_idx = np.isin(current_state, self.milk_1_aday_states)
             out[~once_idx] = 3
             cow_nums = self.lactating_cow_fraction + self.dry_cow_fraction
             cull_idx = (cow_nums > (self.min_cow[month] * 1.01)) & once_idx
@@ -1188,7 +1188,7 @@ class SimpleDairyModel(BaseSimpleFarmModel):
             cow_nums = self.lactating_cow_fraction + self.dry_cow_fraction
             cull_idx = (cow_nums > self.min_cow[month])
             out[cull_idx] = 1
-            once_idx = np.in1d(current_state, self.milk_1_aday_states)
+            once_idx = np.isin(current_state, self.milk_1_aday_states)
             out[~once_idx & ~cull_idx] = 3
             dry_idx = (cow_nums <= self.min_cow[month]) & (self.lactating_cow_fraction > 0) & once_idx
             out[dry_idx] = 2

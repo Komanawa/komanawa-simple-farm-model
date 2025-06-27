@@ -1,0 +1,34 @@
+komanawa.simple_farm_model.s_curve_explore
+==========================================
+
+.. py:module:: komanawa.simple_farm_model.s_curve_explore
+
+.. autoapi-nested-parse::
+
+   created matt_dumont 
+   on: 7/3/24
+
+
+
+Functions
+---------
+
+.. autoapisummary::
+
+   komanawa.simple_farm_model.s_curve_explore.s_curve
+
+
+Module Contents
+---------------
+
+.. py:function:: s_curve(x, s, a, b, c)
+
+   S-curve function
+   :param x: x value
+   :param s: scale - the maximum value of the curve (if s=1, the maximum value is 1)
+   :param a: steepness - smoothing parameter as a increases the curve becomes steeper and the inflection point moves to the right
+   :param b: steepness about the inflection point
+   :param c: inflection point (if a=1, c is the x value at which y=0.5)
+   :return:
+
+

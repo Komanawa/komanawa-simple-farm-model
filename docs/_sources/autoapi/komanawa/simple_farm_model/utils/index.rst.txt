@@ -1,0 +1,42 @@
+komanawa.simple_farm_model.utils
+================================
+
+.. py:module:: komanawa.simple_farm_model.utils
+
+.. autoapi-nested-parse::
+
+   created matt_dumont 
+   on: 9/2/24
+
+
+
+Functions
+---------
+
+.. autoapisummary::
+
+   komanawa.simple_farm_model.utils.geclose
+   komanawa.simple_farm_model.utils.leclose
+
+
+Module Contents
+---------------
+
+.. py:function:: geclose(array1, array2, atol=1e-08, rtol=1e-05, equal_nan=False)
+
+   Compare two arrays for greater than or equal (close)
+   :param array:
+   :param atol:
+   :param rtol:
+   :return:
+
+
+.. py:function:: leclose(array1, array2, atol=1e-08, rtol=1e-05, equal_nan=False)
+
+   Compare two arrays for less than or equal (close)
+   :param array:
+   :param atol:
+   :param rtol:
+   :return:
+
+

@@ -1,0 +1,1348 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../../../../" data-theme="light">
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>komanawa.simple_farm_model.base_simple_farm_model &#8212; komanawa-simple-farm-model v0.1.2 documentation</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "light";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "light";
+  </script>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../../../../_static/styles/theme.css?digest=3ee479438cf8b5e0d341" rel="stylesheet" />
+<link href="../../../../_static/styles/bootstrap.css?digest=3ee479438cf8b5e0d341" rel="stylesheet" />
+<link href="../../../../_static/styles/pydata-sphinx-theme.css?digest=3ee479438cf8b5e0d341" rel="stylesheet" />
+
+  
+  <link href="../../../../_static/vendor/fontawesome/6.5.2/css/all.min.css?digest=3ee479438cf8b5e0d341" rel="stylesheet" />
+  <link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../_static/vendor/fontawesome/6.5.2/webfonts/fa-solid-900.woff2" />
+<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../_static/vendor/fontawesome/6.5.2/webfonts/fa-brands-400.woff2" />
+<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../_static/vendor/fontawesome/6.5.2/webfonts/fa-regular-400.woff2" />
+
+    <link rel="stylesheet" type="text/css" href="../../../../_static/pygments.css?v=a746c00c" />
+    <link rel="stylesheet" type="text/css" href="../../../../_static/graphviz.css?v=fd3f3429" />
+  
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../../../../_static/scripts/bootstrap.js?digest=3ee479438cf8b5e0d341" />
+<link rel="preload" as="script" href="../../../../_static/scripts/pydata-sphinx-theme.js?digest=3ee479438cf8b5e0d341" />
+  <script src="../../../../_static/vendor/fontawesome/6.5.2/js/all.min.js?digest=3ee479438cf8b5e0d341"></script>
+
+    <script src="../../../../_static/documentation_options.js?v=69c7a37b"></script>
+    <script src="../../../../_static/doctools.js?v=9a2dae69"></script>
+    <script src="../../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'autoapi/komanawa/simple_farm_model/base_simple_farm_model/index';</script>
+    <link rel="index" title="Index" href="../../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../../search.html" />
+    <link rel="next" title="komanawa.simple_farm_model.memory_test" href="../memory_test/index.html" />
+    <link rel="prev" title="komanawa.simple_farm_model" href="../index.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="light">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <input type="checkbox"
+          class="sidebar-toggle"
+          id="pst-primary-sidebar-checkbox"/>
+  <label class="overlay overlay-primary" for="pst-primary-sidebar-checkbox"></label>
+  
+  <input type="checkbox"
+          class="sidebar-toggle"
+          id="pst-secondary-sidebar-checkbox"/>
+  <label class="overlay overlay-secondary" for="pst-secondary-sidebar-checkbox"></label>
+  
+  <div class="search-button__wrapper">
+    <div class="search-button__overlay"></div>
+    <div class="search-button__search-container">
+<form class="bd-search d-flex align-items-center"
+      action="../../../../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         id="search-input"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form></div>
+  </div>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class=" navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+
+<a class="navbar-brand logo" href="../../../../index.html">
+  
+  
+  
+  
+  
+    
+    
+    
+    <img src="../../../../_static/ksl_for_latex.png" class="logo__image only-light" alt=""/>
+    <script>document.write(`<img src="" class="logo__image only-dark" alt=""/>`);</script>
+  
+  
+    <p class="title logo__title">Simple-Farm-Model v0.1.2 Overview</p>
+  
+</a></div>
+    
+  </div>
+  
+  <div class=" navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+<nav class="navbar-nav">
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item pst-header-nav-item current active">
+  <a class="nav-link nav-internal" href="../index.html">
+    Code documentation
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+ <script>
+ document.write(`
+   <button class="btn navbar-btn search-button-field search-button__button" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <i class="fa-solid fa-magnifying-glass"></i>
+    <span class="search-button__default-text">Search</span>
+    <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+   </button>
+ `);
+ </script>
+        </div>
+      
+      
+        <div class="navbar-item"><ul class="navbar-icon-links navbar-nav"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="#https://github.com/Komanawa-Solutions-Ltd/komanawa-simple-farm-model#" title="View on GitHub" class="nav-link" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><span><i class="fa-brands fa-square-github fa-lg" aria-hidden="true"></i></span>
+            <span class="sr-only">View on GitHub</span></a>
+        </li>
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://www.linkedin.com/company/k%C5%8Dmanawa-solutions-ltd/" title="Follow us on LinkedIn" class="nav-link" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><span><i class="fa-brands fa-linkedin fa-lg" aria-hidden="true"></i></span>
+            <span class="sr-only">Follow us on LinkedIn</span></a>
+        </li>
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://www.komanawa.com" title="Kо̄manawa Solutions Ltd." class="nav-link" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><img src="../../../../_static/just_symbol.png" class="icon-link-image" alt="Kо̄manawa Solutions Ltd."/></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+ <script>
+ document.write(`
+   <button class="btn navbar-btn search-button-field search-button__button" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <i class="fa-solid fa-magnifying-glass"></i>
+    <span class="search-button__default-text">Search</span>
+    <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+   </button>
+ `);
+ </script>
+    </div>
+  
+
+  
+    <button class="sidebar-toggle secondary-toggle" aria-label="On this page">
+      <span class="fa-solid fa-outdent"></span>
+    </button>
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+      <div class="bd-sidebar-primary bd-sidebar hide-on-wide">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          
+          
+            <div class="navbar-item">
+<nav class="navbar-nav">
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item pst-header-nav-item current active">
+  <a class="nav-link nav-internal" href="../index.html">
+    Code documentation
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+          
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item"><ul class="navbar-icon-links navbar-nav"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="#https://github.com/Komanawa-Solutions-Ltd/komanawa-simple-farm-model#" title="View on GitHub" class="nav-link" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><span><i class="fa-brands fa-square-github fa-lg" aria-hidden="true"></i></span>
+            <span class="sr-only">View on GitHub</span></a>
+        </li>
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://www.linkedin.com/company/k%C5%8Dmanawa-solutions-ltd/" title="Follow us on LinkedIn" class="nav-link" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><span><i class="fa-brands fa-linkedin fa-lg" aria-hidden="true"></i></span>
+            <span class="sr-only">Follow us on LinkedIn</span></a>
+        </li>
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://www.komanawa.com" title="Kо̄manawa Solutions Ltd." class="nav-link" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><img src="../../../../_static/just_symbol.png" class="icon-link-image" alt="Kо̄manawa Solutions Ltd."/></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+  </div>
+  
+  <div id="rtd-footer-container"></div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../../../../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="../index.html" class="nav-link">komanawa.simple_farm_model</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page">komanawa.sim...</li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <section id="module-komanawa.simple_farm_model.base_simple_farm_model">
+<span id="komanawa-simple-farm-model-base-simple-farm-model"></span><h1>komanawa.simple_farm_model.base_simple_farm_model<a class="headerlink" href="#module-komanawa.simple_farm_model.base_simple_farm_model" title="Link to this heading">#</a></h1>
+<p>created matt_dumont
+on: 26/06/23</p>
+<p>This module contains the BaseSimpleFarmModel class and its child class DummySimpleFarm. These classes are used to simulate a simple farm economic model.</p>
+<p>The BaseSimpleFarmModel class is an abstract base class that provides the basic structure and methods for the farm economic model. It includes methods for running the model, saving results to a netCDF file, reading in a model from a netCDF file, saving results to CSV files, and plotting results.</p>
+<p>The DummySimpleFarm class is a child class of BaseSimpleFarmModel. It is a placeholder class that needs to be implemented with specific farm model logic.</p>
+<p>The module also includes a helper function get_colors() for generating a list of colors for plotting, and a dictionary month_len that provides the number of days in each month.</p>
+<section id="classes">
+<h2>Classes<a class="headerlink" href="#classes" title="Link to this heading">#</a></h2>
+<div class="pst-scrollable-table-container"><table class="autosummary longtable table autosummary">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="#komanawa.simple_farm_model.base_simple_farm_model.BaseSimpleFarmModel" title="komanawa.simple_farm_model.base_simple_farm_model.BaseSimpleFarmModel"><code class="xref py py-obj docutils literal notranslate"><span class="pre">BaseSimpleFarmModel</span></code></a></p></td>
+<td><p>Abstract base class for a simple farm economic model.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#komanawa.simple_farm_model.base_simple_farm_model.DummySimpleFarm" title="komanawa.simple_farm_model.base_simple_farm_model.DummySimpleFarm"><code class="xref py py-obj docutils literal notranslate"><span class="pre">DummySimpleFarm</span></code></a></p></td>
+<td><p>Abstract base class for a simple farm economic model.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
+<section id="module-contents">
+<h2>Module Contents<a class="headerlink" href="#module-contents" title="Link to this heading">#</a></h2>
+<dl class="py class">
+<dt class="sig sig-object py" id="komanawa.simple_farm_model.base_simple_farm_model.BaseSimpleFarmModel">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">BaseSimpleFarmModel</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">all_months</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">istate</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pg</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ifeed</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">imoney</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sup_feed_cost</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">product_price</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">monthly_input</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../_modules/komanawa/simple_farm_model/base_simple_farm_model.html#BaseSimpleFarmModel"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#komanawa.simple_farm_model.base_simple_farm_model.BaseSimpleFarmModel" title="Link to this definition">#</a></dt>
+<dd><p>Bases: <code class="xref py py-obj docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>Abstract base class for a simple farm economic model.</p>
+<p>This class provides the basic structure and methods for the farm economic model. It includes methods for running the model, saving results to a netCDF file, reading in a model from a netCDF file, saving results to CSV files, and plotting results.</p>
+<p>The class needs to be subclassed and the following methods need to be implemented in the subclass:</p>
+<ul class="simple">
+<li><p>convert_pg_to_me()</p></li>
+<li><p>calculate_feed_needed()</p></li>
+<li><p>calculate_production()</p></li>
+<li><p>calculate_sup_feed()</p></li>
+<li><p>import_feed_and_change_state()</p></li>
+<li><p>reset_state()</p></li>
+</ul>
+<p>Class Attributes:</p>
+<blockquote>
+<div><ul class="simple">
+<li><dl class="field-list simple">
+<dt class="field-odd">cvar long_name_dict<span class="colon">:</span></dt>
+<dd class="field-odd"><p>(dict) Dictionary of attribute name to attribute long name (unit) for display and metadata.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="field-list simple">
+<dt class="field-odd">cvar obj_dict<span class="colon">:</span></dt>
+<dd class="field-odd"><p>(dict) Dictionary of attribute name to object name. used to</p>
+</dd>
+</dl>
+</li>
+</ul>
+</div></blockquote>
+<p>Subclass Attributes that must be set in the subclass:</p>
+<blockquote>
+<div><dl class="field-list simple">
+<dt class="field-odd">cvar states<span class="colon">:</span></dt>
+<dd class="field-odd"><p>(dict): Dictionary of state numbers to state descriptions.</p>
+</dd>
+<dt class="field-even">cvar month_reset<span class="colon">:</span></dt>
+<dd class="field-even"><p>(int or None): Month number when the farm state is reset. If None then the farm state is not reset.</p>
+</dd>
+<dt class="field-odd">cvar homegrown_efficiency<span class="colon">:</span></dt>
+<dd class="field-odd"><p>(float): Efficiency of homegrown feed (e.g. 0.8 means 20% of feed is lost due to inefficency).</p>
+</dd>
+<dt class="field-even">cvar supplemental_efficiency<span class="colon">:</span></dt>
+<dd class="field-even"><p>(float): Efficiency of supplemental feed. (e.g. 0.8 means 20% of feed is lost due to inefficency).</p>
+</dd>
+<dt class="field-odd">cvar sup_feedout_cost<span class="colon">:</span></dt>
+<dd class="field-odd"><p>(float): Cost of feed out. (e.g. 0.5 means $0.50 per MJ of feed).</p>
+</dd>
+<dt class="field-even">cvar homegrown_store_efficiency<span class="colon">:</span></dt>
+<dd class="field-even"><p>(float): Efficiency of storing homegrown feed. (e.g. 0.8 means 20% of feed is lost due to inefficency).</p>
+</dd>
+<dt class="field-odd">cvar homegrown_storage_cost<span class="colon">:</span></dt>
+<dd class="field-odd"><p>(float): Cost of storing homegrown feed. (e.g. 0.5 means $0.50 per MJ of feed).</p>
+</dd>
+</dl>
+</div></blockquote>
+<p>Instance Attributes:</p>
+<blockquote>
+<div><ul class="simple">
+<li><dl class="simple">
+<dt>Descriptor attributes</dt><dd><ul>
+<li><dl class="field-list simple">
+<dt class="field-odd">ivar nsims<span class="colon">:</span></dt>
+<dd class="field-odd"><p>(int): Number of simulations.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="field-list simple">
+<dt class="field-odd">ivar time_len<span class="colon">:</span></dt>
+<dd class="field-odd"><p>(int): Number of time steps in the model.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="field-list simple">
+<dt class="field-odd">ivar model_shape<span class="colon">:</span></dt>
+<dd class="field-odd"><p>(tuple): Shape of the model arrays (time_len + 1, nsims).</p>
+</dd>
+</dl>
+</li>
+<li><dl class="field-list simple">
+<dt class="field-odd">ivar _model_input_shape<span class="colon">:</span></dt>
+<dd class="field-odd"><p>(tuple): Shape of the model input arrays (time_len, nsims).</p>
+</dd>
+</dl>
+</li>
+<li><dl class="field-list simple">
+<dt class="field-odd">ivar inpath<span class="colon">:</span></dt>
+<dd class="field-odd"><p>(Path or None) Path to the input file, if the model was read in from a file.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="field-list simple">
+<dt class="field-odd">ivar all_days<span class="colon">:</span></dt>
+<dd class="field-odd"><p>(np.ndarray): Array of day numbers for each time step in the model.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="field-list simple">
+<dt class="field-odd">ivar all_months<span class="colon">:</span></dt>
+<dd class="field-odd"><p>(np.ndarray): Array of month numbers for each time step in the model.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="field-list simple">
+<dt class="field-odd">ivar all_year<span class="colon">:</span></dt>
+<dd class="field-odd"><p>(np.ndarray): Array of year numbers for each time step in the model.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="field-list simple">
+<dt class="field-odd">ivar _run<span class="colon">:</span></dt>
+<dd class="field-odd"><p>(bool): Flag indicating if the model has been run.</p>
+</dd>
+</dl>
+</li>
+</ul>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>Model input attributes (all transition to model_shape (time, nsims))</dt><dd><ul>
+<li><dl class="field-list simple">
+<dt class="field-odd">ivar pg<span class="colon">:</span></dt>
+<dd class="field-odd"><p>(np.ndarray): Array of pasture growth amounts for each time step in the model.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="field-list simple">
+<dt class="field-odd">ivar product_price<span class="colon">:</span></dt>
+<dd class="field-odd"><p>(np.ndarray): Array of product prices for each time step in the model.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="field-list simple">
+<dt class="field-odd">ivar sup_feed_cost<span class="colon">:</span></dt>
+<dd class="field-odd"><p>(np.ndarray): Array of supplementary feed costs for each time step in the model.</p>
+</dd>
+</dl>
+</li>
+</ul>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>Model calculation attributes</dt><dd><ul>
+<li><dl class="field-list simple">
+<dt class="field-odd">ivar model_feed<span class="colon">:</span></dt>
+<dd class="field-odd"><p>(np.ndarray): Array of feed amounts for each time step in the model.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="field-list simple">
+<dt class="field-odd">ivar model_feed_cost<span class="colon">:</span></dt>
+<dd class="field-odd"><p>(np.ndarray): Array of feed cost amounts for each time step in the model.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="field-list simple">
+<dt class="field-odd">ivar model_feed_demand<span class="colon">:</span></dt>
+<dd class="field-odd"><p>(np.ndarray): Array of feed demand amounts for each time step in the model.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="field-list simple">
+<dt class="field-odd">ivar model_feed_imported<span class="colon">:</span></dt>
+<dd class="field-odd"><p>(np.ndarray): Array of imported feed amounts for each time step in the model.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="field-list simple">
+<dt class="field-odd">ivar model_money<span class="colon">:</span></dt>
+<dd class="field-odd"><p>(np.ndarray): Array of money amounts for each time step in the model.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="field-list simple">
+<dt class="field-odd">ivar model_prod<span class="colon">:</span></dt>
+<dd class="field-odd"><p>(np.ndarray): Array of product amounts for each time step in the model.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="field-list simple">
+<dt class="field-odd">ivar model_prod_money<span class="colon">:</span></dt>
+<dd class="field-odd"><p>(np.ndarray): Array of product money amounts for each time step in the model.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="field-list simple">
+<dt class="field-odd">ivar model_state<span class="colon">:</span></dt>
+<dd class="field-odd"><p>(np.ndarray): Array of state numbers for each time step in the model.</p>
+</dd>
+</dl>
+</li>
+</ul>
+</dd>
+</dl>
+</li>
+</ul>
+</div></blockquote>
+<p>Process:</p>
+<blockquote>
+<div><p>The run_model method in the BaseSimpleFarmModel class is responsible for running the farm economic model. Here’s a step-by-step description of the process. The model is run on a daily timestep with an assumed 365 day year:</p>
+<ol class="arabic simple">
+<li><p>The method first checks if the model has already been run. If it has, it raises an error, pass, or rerun (see run_model docs).</p></li>
+<li><dl class="simple">
+<dt>It then enters a loop that iterates over each month in the model’s timeline. For each month, it performs the following steps:</dt><dd><ol class="arabic simple">
+<li><p>It sets the start of day values for current money, current feed, and current state.</p></li>
+<li><p>It allows for supplemental actions at the start of the day, if needed. These can be set in the supplmental_action_first method.</p></li>
+<li><p>It calculates the pasture growth and converts it to ME (MJ/ha). Both values are stored.</p></li>
+<li><p>It calculates the feed needed for the cattle.</p></li>
+<li><p>It identifies surplus homegrown feed, deficit feed, and perfect feed scenarios. By applying the feed efficiency (homegrown_efficiency and supplemental_efficiency). If there is surplus homegrown it stores the surplus (which includes a cost per MJ), if supplemental feed (MJ) is needed feeds out the supplemental needed (including supplemental efficiency), which reduces the feed store and incurs a feed out cost.</p></li>
+<li><p>It calculates the product produced and stores it.</p></li>
+<li><p>It calculates the profit from selling the product and adds it to the current money.</p></li>
+<li><p>It assesses the feed store, imports feed if needed, and changes the state of the farm.</p></li>
+<li><p>It allows for supplemental actions at the end of the day, if needed. These can be set in the supplmental_action_last method.</p></li>
+<li><p>If it’s the start of a new year, it resets the state.</p></li>
+<li><p>Finally, it sets the key values for the current state, feed, and money.</p></li>
+</ol>
+</dd>
+</dl>
+</li>
+<li><p>After the loop, it sets the _run attribute to True, indicating that the model has been run.</p></li>
+</ol>
+<p>This method essentially simulates the operation of the farm over time, taking into account various factors such as feed demand, product production, costs, and state transitions.</p>
+</div></blockquote>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>all_months</strong> – integer months, defines mon_len and time_len</p></li>
+<li><p><strong>istate</strong> – initial state number or np.ndarray shape (nsims,) defines number of simulations</p></li>
+<li><p><strong>pg</strong> – pasture growth kgDM/ha/day np.ndarray shape (mon_len,) or (mon_len, nsims)</p></li>
+<li><p><strong>ifeed</strong> – initial feed number float or np.ndarray shape (nsims,) MJ/ha</p></li>
+<li><p><strong>imoney</strong> – initial money number float or np.ndarray shape (nsims,) $/ha</p></li>
+<li><p><strong>sup_feed_cost</strong> – cost of supplementary feed $/MJ float or np.ndarray shape (nsims,) or (mon_len, nsims)</p></li>
+<li><p><strong>product_price</strong> – income price $/kg product float or np.ndarray shape (nsims,) or (mon_len, nsims)</p></li>
+<li><p><strong>monthly_input</strong> – if True, monthly input, if False, daily input (365 days per year)</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="komanawa.simple_farm_model.base_simple_farm_model.BaseSimpleFarmModel.from_input_file">
+<em class="property"><span class="pre">classmethod</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">from_input_file</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">inpath</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../_modules/komanawa/simple_farm_model/base_simple_farm_model.html#BaseSimpleFarmModel.from_input_file"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#komanawa.simple_farm_model.base_simple_farm_model.BaseSimpleFarmModel.from_input_file" title="Link to this definition">#</a></dt>
+<dd><p>read in a model from a netcdf file</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>inpath</strong></p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="komanawa.simple_farm_model.base_simple_farm_model.BaseSimpleFarmModel.import_feed_and_change_state">
+<span class="sig-name descname"><span class="pre">import_feed_and_change_state</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">i_month</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">month</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">current_state</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">current_feed</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../_modules/komanawa/simple_farm_model/base_simple_farm_model.html#BaseSimpleFarmModel.import_feed_and_change_state"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#komanawa.simple_farm_model.base_simple_farm_model.BaseSimpleFarmModel.import_feed_and_change_state" title="Link to this definition">#</a></dt>
+<dd><p>import feed and change state</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>i_month</strong> – month index</p></li>
+<li><p><strong>month</strong> – month</p></li>
+<li><p><strong>current_state</strong> – current state</p></li>
+<li><p><strong>current_feed</strong> – current feed</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="komanawa.simple_farm_model.base_simple_farm_model.BaseSimpleFarmModel.output_eq">
+<span class="sig-name descname"><span class="pre">output_eq</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">other</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">raise_on_diff</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">skip_alt_kwargs</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">compare_idx</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dimensionality_only</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rtol</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1e-05</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../_modules/komanawa/simple_farm_model/base_simple_farm_model.html#BaseSimpleFarmModel.output_eq"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#komanawa.simple_farm_model.base_simple_farm_model.BaseSimpleFarmModel.output_eq" title="Link to this definition">#</a></dt>
+<dd><p>check if two models are equal</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>other</strong> – Other model</p></li>
+<li><p><strong>raise_on_diff</strong> – bool if True raise an error if the models are different, if False just return False</p></li>
+<li><p><strong>skip_alt_kwargs</strong> – None or iterable of alt_kwargs to skip testing</p></li>
+<li><p><strong>compare_idx</strong> – None or boolean or int index to compare only a subset of the data.  shape=(time, nsims)</p></li>
+<li><p><strong>dimensionality_only</strong> – bool if True only check the dimensionality of the model, if False check all values</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="komanawa.simple_farm_model.base_simple_farm_model.BaseSimpleFarmModel.plot_results">
+<span class="sig-name descname"><span class="pre">plot_results</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">ys</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">x</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'time'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sims</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mult_as_lines</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">twin_axs</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">figsize</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">(10,</span> <span class="pre">8)</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">start_year</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">2000</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bins</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">20</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sub_model</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../_modules/komanawa/simple_farm_model/base_simple_farm_model.html#BaseSimpleFarmModel.plot_results"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#komanawa.simple_farm_model.base_simple_farm_model.BaseSimpleFarmModel.plot_results" title="Link to this definition">#</a></dt>
+<dd><p>plot results</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>ys</strong> – <p>one or more of: self.long_name_dict.keys() for instance:</p>
+<ul>
+<li><p>’state’ (state of the system)</p></li>
+<li><p>’feed’ (feed on farm)</p></li>
+<li><p>’money’ (money on farm)</p></li>
+<li><p>’feed_demand’ (feed demand)</p></li>
+<li><p>’prod’ (production)</p></li>
+<li><p>’prod_money’ (production money)</p></li>
+<li><p>’feed_imported’ (feed imported)</p></li>
+<li><p>’feed_cost’ (feed cost)</p></li>
+<li><p>’pg’ (pasture growth)</p></li>
+<li><p>’product_price’ (product price)</p></li>
+<li><p>’sup_feed_cost’ (supplementary feed cost)</p></li>
+</ul>
+</p></li>
+<li><p><strong>x</strong> – x axis to plot against ‘time’ or a ys variable</p></li>
+<li><p><strong>sims</strong> – <p>sim numbers to plot:</p>
+<ul>
+<li><p>None: plot all sims</p></li>
+<li><p>int: plot a single sim</p></li>
+<li><p>iterable of ints: plot multiple sims</p></li>
+<li><p>dictionary with int keys and str values: plot key sims with value labels</p></li>
+</ul>
+</p></li>
+<li><p><strong>mult_as_lines</strong> – bool if True, plot multiple sims as lines, if False, plot multiple sims boxplot style pdf</p></li>
+<li><p><strong>twin_axs</strong> – bool if True, plot each y on twin axis, if False, plot on subplots</p></li>
+<li><p><strong>start_year</strong> – the year to start plotting from (default 2000) only affects the transition from year 1, year2, etc. to datetime</p></li>
+<li><p><strong>bins</strong> – number of bins for mult_as_lines=False and x!=’time’</p></li>
+<li><p><strong>sub_model</strong> – None or another model to plot the difference between the two models (self - sub_model)</p></li>
+<li><p><strong>kwargs</strong> – passed to plt.plot if and only if mult_as_lines=True</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="komanawa.simple_farm_model.base_simple_farm_model.BaseSimpleFarmModel.run_model">
+<span class="sig-name descname"><span class="pre">run_model</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">raise_on_rerun</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rerun</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">printi</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../_modules/komanawa/simple_farm_model/base_simple_farm_model.html#BaseSimpleFarmModel.run_model"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#komanawa.simple_farm_model.base_simple_farm_model.BaseSimpleFarmModel.run_model" title="Link to this definition">#</a></dt>
+<dd><p>run the model see docstring for process
+:param raise_on_rerun: if True, raise an error if the model has already been run, if False, just return (don’t rerun the model)
+:param rerun: if True, rerun the model even if it has already been run
+:param printi: if True, print iteration identifier
+:return:</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="komanawa.simple_farm_model.base_simple_farm_model.BaseSimpleFarmModel.save_results_csv">
+<span class="sig-name descname"><span class="pre">save_results_csv</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">outdir</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sims</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../_modules/komanawa/simple_farm_model/base_simple_farm_model.html#BaseSimpleFarmModel.save_results_csv"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#komanawa.simple_farm_model.base_simple_farm_model.BaseSimpleFarmModel.save_results_csv" title="Link to this definition">#</a></dt>
+<dd><p>save results to csv in outdir with name sim_{sim}.csv</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>outdir</strong> – output directory</p></li>
+<li><p><strong>sims</strong> – sim numbers to save, if None, save all</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="komanawa.simple_farm_model.base_simple_farm_model.BaseSimpleFarmModel.save_results_nc">
+<span class="sig-name descname"><span class="pre">save_results_nc</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">outpath</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../_modules/komanawa/simple_farm_model/base_simple_farm_model.html#BaseSimpleFarmModel.save_results_nc"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#komanawa.simple_farm_model.base_simple_farm_model.BaseSimpleFarmModel.save_results_nc" title="Link to this definition">#</a></dt>
+<dd><p>save results to netcdf file</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>outpath</strong> – path to save file</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="komanawa.simple_farm_model.base_simple_farm_model.BaseSimpleFarmModel.supplemental_action_first">
+<span class="sig-name descname"><span class="pre">supplemental_action_first</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">i_month</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">month</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">day</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">current_state</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">current_feed</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">current_money</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../_modules/komanawa/simple_farm_model/base_simple_farm_model.html#BaseSimpleFarmModel.supplemental_action_first"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#komanawa.simple_farm_model.base_simple_farm_model.BaseSimpleFarmModel.supplemental_action_first" title="Link to this definition">#</a></dt>
+<dd><p>supplemental actions that might be needed for sub models at the end of each time step.  This is a placeholder to allow rapid development without modifying the base class. it is absolutely reasonable to leave as is.
+:param i_month:
+:param month:
+:param day:
+:param current_state:
+:param current_feed:
+:param current_money:
+:return:</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="komanawa.simple_farm_model.base_simple_farm_model.BaseSimpleFarmModel.supplemental_action_last">
+<span class="sig-name descname"><span class="pre">supplemental_action_last</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">i_month</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">month</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">day</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">current_state</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">current_feed</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">current_money</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../_modules/komanawa/simple_farm_model/base_simple_farm_model.html#BaseSimpleFarmModel.supplemental_action_last"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#komanawa.simple_farm_model.base_simple_farm_model.BaseSimpleFarmModel.supplemental_action_last" title="Link to this definition">#</a></dt>
+<dd><p>supplemental actions that might be needed for sub models at the end of each time step.  This is a placeholder to allow rapid development without modifying the base class. it is absolutely reasonable to leave as is.
+:param i_month:
+:param month:
+:param day:
+:param current_state:
+:param current_feed:
+:param current_money:
+:return:</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="komanawa.simple_farm_model.base_simple_farm_model.DummySimpleFarm">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">DummySimpleFarm</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">all_months</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">istate</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pg</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ifeed</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">imoney</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sup_feed_cost</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">product_price</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">monthly_input</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../_modules/komanawa/simple_farm_model/base_simple_farm_model.html#DummySimpleFarm"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#komanawa.simple_farm_model.base_simple_farm_model.DummySimpleFarm" title="Link to this definition">#</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#komanawa.simple_farm_model.base_simple_farm_model.BaseSimpleFarmModel" title="komanawa.simple_farm_model.base_simple_farm_model.BaseSimpleFarmModel"><code class="xref py py-obj docutils literal notranslate"><span class="pre">BaseSimpleFarmModel</span></code></a></p>
+<div class="graphviz"><img src="../../../../_images/inheritance-efd89283bb5780a39f07de4b467f2748e55d65ee.png" alt="Inheritance diagram of komanawa.simple_farm_model.base_simple_farm_model.DummySimpleFarm" usemap="#inheritancef24166cd3f" class="inheritance graphviz" /></div>
+<map id="inheritancef24166cd3f" name="inheritancef24166cd3f">
+<area shape="rect" id="node1" href="#komanawa.simple_farm_model.base_simple_farm_model.BaseSimpleFarmModel" target="_top" title="Abstract base class for a simple farm economic model." alt="" coords="5,5,176,31"/>
+<area shape="rect" id="node2" href="#komanawa.simple_farm_model.base_simple_farm_model.DummySimpleFarm" target="_top" title="DummySimpleFarm" alt="" coords="224,5,375,31"/>
+</map><p>Abstract base class for a simple farm economic model.</p>
+<p>This class provides the basic structure and methods for the farm economic model. It includes methods for running the model, saving results to a netCDF file, reading in a model from a netCDF file, saving results to CSV files, and plotting results.</p>
+<p>The class needs to be subclassed and the following methods need to be implemented in the subclass:</p>
+<ul class="simple">
+<li><p>convert_pg_to_me()</p></li>
+<li><p>calculate_feed_needed()</p></li>
+<li><p>calculate_production()</p></li>
+<li><p>calculate_sup_feed()</p></li>
+<li><p>import_feed_and_change_state()</p></li>
+<li><p>reset_state()</p></li>
+</ul>
+<p>Class Attributes:</p>
+<blockquote>
+<div><ul class="simple">
+<li><dl class="field-list simple">
+<dt class="field-odd">cvar long_name_dict<span class="colon">:</span></dt>
+<dd class="field-odd"><p>(dict) Dictionary of attribute name to attribute long name (unit) for display and metadata.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="field-list simple">
+<dt class="field-odd">cvar obj_dict<span class="colon">:</span></dt>
+<dd class="field-odd"><p>(dict) Dictionary of attribute name to object name. used to</p>
+</dd>
+</dl>
+</li>
+</ul>
+</div></blockquote>
+<p>Subclass Attributes that must be set in the subclass:</p>
+<blockquote>
+<div><dl class="field-list simple">
+<dt class="field-odd">cvar states<span class="colon">:</span></dt>
+<dd class="field-odd"><p>(dict): Dictionary of state numbers to state descriptions.</p>
+</dd>
+<dt class="field-even">cvar month_reset<span class="colon">:</span></dt>
+<dd class="field-even"><p>(int or None): Month number when the farm state is reset. If None then the farm state is not reset.</p>
+</dd>
+<dt class="field-odd">cvar homegrown_efficiency<span class="colon">:</span></dt>
+<dd class="field-odd"><p>(float): Efficiency of homegrown feed (e.g. 0.8 means 20% of feed is lost due to inefficency).</p>
+</dd>
+<dt class="field-even">cvar supplemental_efficiency<span class="colon">:</span></dt>
+<dd class="field-even"><p>(float): Efficiency of supplemental feed. (e.g. 0.8 means 20% of feed is lost due to inefficency).</p>
+</dd>
+<dt class="field-odd">cvar sup_feedout_cost<span class="colon">:</span></dt>
+<dd class="field-odd"><p>(float): Cost of feed out. (e.g. 0.5 means $0.50 per MJ of feed).</p>
+</dd>
+<dt class="field-even">cvar homegrown_store_efficiency<span class="colon">:</span></dt>
+<dd class="field-even"><p>(float): Efficiency of storing homegrown feed. (e.g. 0.8 means 20% of feed is lost due to inefficency).</p>
+</dd>
+<dt class="field-odd">cvar homegrown_storage_cost<span class="colon">:</span></dt>
+<dd class="field-odd"><p>(float): Cost of storing homegrown feed. (e.g. 0.5 means $0.50 per MJ of feed).</p>
+</dd>
+</dl>
+</div></blockquote>
+<p>Instance Attributes:</p>
+<blockquote>
+<div><ul class="simple">
+<li><dl class="simple">
+<dt>Descriptor attributes</dt><dd><ul>
+<li><dl class="field-list simple">
+<dt class="field-odd">ivar nsims<span class="colon">:</span></dt>
+<dd class="field-odd"><p>(int): Number of simulations.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="field-list simple">
+<dt class="field-odd">ivar time_len<span class="colon">:</span></dt>
+<dd class="field-odd"><p>(int): Number of time steps in the model.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="field-list simple">
+<dt class="field-odd">ivar model_shape<span class="colon">:</span></dt>
+<dd class="field-odd"><p>(tuple): Shape of the model arrays (time_len + 1, nsims).</p>
+</dd>
+</dl>
+</li>
+<li><dl class="field-list simple">
+<dt class="field-odd">ivar _model_input_shape<span class="colon">:</span></dt>
+<dd class="field-odd"><p>(tuple): Shape of the model input arrays (time_len, nsims).</p>
+</dd>
+</dl>
+</li>
+<li><dl class="field-list simple">
+<dt class="field-odd">ivar inpath<span class="colon">:</span></dt>
+<dd class="field-odd"><p>(Path or None) Path to the input file, if the model was read in from a file.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="field-list simple">
+<dt class="field-odd">ivar all_days<span class="colon">:</span></dt>
+<dd class="field-odd"><p>(np.ndarray): Array of day numbers for each time step in the model.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="field-list simple">
+<dt class="field-odd">ivar all_months<span class="colon">:</span></dt>
+<dd class="field-odd"><p>(np.ndarray): Array of month numbers for each time step in the model.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="field-list simple">
+<dt class="field-odd">ivar all_year<span class="colon">:</span></dt>
+<dd class="field-odd"><p>(np.ndarray): Array of year numbers for each time step in the model.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="field-list simple">
+<dt class="field-odd">ivar _run<span class="colon">:</span></dt>
+<dd class="field-odd"><p>(bool): Flag indicating if the model has been run.</p>
+</dd>
+</dl>
+</li>
+</ul>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>Model input attributes (all transition to model_shape (time, nsims))</dt><dd><ul>
+<li><dl class="field-list simple">
+<dt class="field-odd">ivar pg<span class="colon">:</span></dt>
+<dd class="field-odd"><p>(np.ndarray): Array of pasture growth amounts for each time step in the model.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="field-list simple">
+<dt class="field-odd">ivar product_price<span class="colon">:</span></dt>
+<dd class="field-odd"><p>(np.ndarray): Array of product prices for each time step in the model.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="field-list simple">
+<dt class="field-odd">ivar sup_feed_cost<span class="colon">:</span></dt>
+<dd class="field-odd"><p>(np.ndarray): Array of supplementary feed costs for each time step in the model.</p>
+</dd>
+</dl>
+</li>
+</ul>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>Model calculation attributes</dt><dd><ul>
+<li><dl class="field-list simple">
+<dt class="field-odd">ivar model_feed<span class="colon">:</span></dt>
+<dd class="field-odd"><p>(np.ndarray): Array of feed amounts for each time step in the model.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="field-list simple">
+<dt class="field-odd">ivar model_feed_cost<span class="colon">:</span></dt>
+<dd class="field-odd"><p>(np.ndarray): Array of feed cost amounts for each time step in the model.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="field-list simple">
+<dt class="field-odd">ivar model_feed_demand<span class="colon">:</span></dt>
+<dd class="field-odd"><p>(np.ndarray): Array of feed demand amounts for each time step in the model.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="field-list simple">
+<dt class="field-odd">ivar model_feed_imported<span class="colon">:</span></dt>
+<dd class="field-odd"><p>(np.ndarray): Array of imported feed amounts for each time step in the model.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="field-list simple">
+<dt class="field-odd">ivar model_money<span class="colon">:</span></dt>
+<dd class="field-odd"><p>(np.ndarray): Array of money amounts for each time step in the model.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="field-list simple">
+<dt class="field-odd">ivar model_prod<span class="colon">:</span></dt>
+<dd class="field-odd"><p>(np.ndarray): Array of product amounts for each time step in the model.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="field-list simple">
+<dt class="field-odd">ivar model_prod_money<span class="colon">:</span></dt>
+<dd class="field-odd"><p>(np.ndarray): Array of product money amounts for each time step in the model.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="field-list simple">
+<dt class="field-odd">ivar model_state<span class="colon">:</span></dt>
+<dd class="field-odd"><p>(np.ndarray): Array of state numbers for each time step in the model.</p>
+</dd>
+</dl>
+</li>
+</ul>
+</dd>
+</dl>
+</li>
+</ul>
+</div></blockquote>
+<p>Process:</p>
+<blockquote>
+<div><p>The run_model method in the BaseSimpleFarmModel class is responsible for running the farm economic model. Here’s a step-by-step description of the process. The model is run on a daily timestep with an assumed 365 day year:</p>
+<ol class="arabic simple">
+<li><p>The method first checks if the model has already been run. If it has, it raises an error, pass, or rerun (see run_model docs).</p></li>
+<li><dl class="simple">
+<dt>It then enters a loop that iterates over each month in the model’s timeline. For each month, it performs the following steps:</dt><dd><ol class="arabic simple">
+<li><p>It sets the start of day values for current money, current feed, and current state.</p></li>
+<li><p>It allows for supplemental actions at the start of the day, if needed. These can be set in the supplmental_action_first method.</p></li>
+<li><p>It calculates the pasture growth and converts it to ME (MJ/ha). Both values are stored.</p></li>
+<li><p>It calculates the feed needed for the cattle.</p></li>
+<li><p>It identifies surplus homegrown feed, deficit feed, and perfect feed scenarios. By applying the feed efficiency (homegrown_efficiency and supplemental_efficiency). If there is surplus homegrown it stores the surplus (which includes a cost per MJ), if supplemental feed (MJ) is needed feeds out the supplemental needed (including supplemental efficiency), which reduces the feed store and incurs a feed out cost.</p></li>
+<li><p>It calculates the product produced and stores it.</p></li>
+<li><p>It calculates the profit from selling the product and adds it to the current money.</p></li>
+<li><p>It assesses the feed store, imports feed if needed, and changes the state of the farm.</p></li>
+<li><p>It allows for supplemental actions at the end of the day, if needed. These can be set in the supplmental_action_last method.</p></li>
+<li><p>If it’s the start of a new year, it resets the state.</p></li>
+<li><p>Finally, it sets the key values for the current state, feed, and money.</p></li>
+</ol>
+</dd>
+</dl>
+</li>
+<li><p>After the loop, it sets the _run attribute to True, indicating that the model has been run.</p></li>
+</ol>
+<p>This method essentially simulates the operation of the farm over time, taking into account various factors such as feed demand, product production, costs, and state transitions.</p>
+</div></blockquote>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>all_months</strong> – integer months, defines mon_len and time_len</p></li>
+<li><p><strong>istate</strong> – initial state number or np.ndarray shape (nsims,) defines number of simulations</p></li>
+<li><p><strong>pg</strong> – pasture growth kgDM/ha/day np.ndarray shape (mon_len,) or (mon_len, nsims)</p></li>
+<li><p><strong>ifeed</strong> – initial feed number float or np.ndarray shape (nsims,) MJ/ha</p></li>
+<li><p><strong>imoney</strong> – initial money number float or np.ndarray shape (nsims,) $/ha</p></li>
+<li><p><strong>sup_feed_cost</strong> – cost of supplementary feed $/MJ float or np.ndarray shape (nsims,) or (mon_len, nsims)</p></li>
+<li><p><strong>product_price</strong> – income price $/kg product float or np.ndarray shape (nsims,) or (mon_len, nsims)</p></li>
+<li><p><strong>monthly_input</strong> – if True, monthly input, if False, daily input (365 days per year)</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="komanawa.simple_farm_model.base_simple_farm_model.DummySimpleFarm.from_input_file">
+<em class="property"><span class="pre">classmethod</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">from_input_file</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">inpath</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../_modules/komanawa/simple_farm_model/base_simple_farm_model.html#DummySimpleFarm.from_input_file"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#komanawa.simple_farm_model.base_simple_farm_model.DummySimpleFarm.from_input_file" title="Link to this definition">#</a></dt>
+<dd><p>read in a model from a netcdf file</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>inpath</strong></p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="komanawa.simple_farm_model.base_simple_farm_model.DummySimpleFarm.import_feed_and_change_state">
+<span class="sig-name descname"><span class="pre">import_feed_and_change_state</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">i_month</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">month</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">current_state</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">current_feed</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../_modules/komanawa/simple_farm_model/base_simple_farm_model.html#DummySimpleFarm.import_feed_and_change_state"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#komanawa.simple_farm_model.base_simple_farm_model.DummySimpleFarm.import_feed_and_change_state" title="Link to this definition">#</a></dt>
+<dd><p>import feed and change state</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>i_month</strong> – month index</p></li>
+<li><p><strong>month</strong> – month</p></li>
+<li><p><strong>current_state</strong> – current state</p></li>
+<li><p><strong>current_feed</strong> – current feed</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="komanawa.simple_farm_model.base_simple_farm_model.DummySimpleFarm.output_eq">
+<span class="sig-name descname"><span class="pre">output_eq</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">other</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">raise_on_diff</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">skip_alt_kwargs</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">compare_idx</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dimensionality_only</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rtol</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1e-05</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../_modules/komanawa/simple_farm_model/base_simple_farm_model.html#DummySimpleFarm.output_eq"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#komanawa.simple_farm_model.base_simple_farm_model.DummySimpleFarm.output_eq" title="Link to this definition">#</a></dt>
+<dd><p>check if two models are equal</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>other</strong> – Other model</p></li>
+<li><p><strong>raise_on_diff</strong> – bool if True raise an error if the models are different, if False just return False</p></li>
+<li><p><strong>skip_alt_kwargs</strong> – None or iterable of alt_kwargs to skip testing</p></li>
+<li><p><strong>compare_idx</strong> – None or boolean or int index to compare only a subset of the data.  shape=(time, nsims)</p></li>
+<li><p><strong>dimensionality_only</strong> – bool if True only check the dimensionality of the model, if False check all values</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="komanawa.simple_farm_model.base_simple_farm_model.DummySimpleFarm.plot_results">
+<span class="sig-name descname"><span class="pre">plot_results</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">ys</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">x</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'time'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sims</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mult_as_lines</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">twin_axs</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">figsize</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">(10,</span> <span class="pre">8)</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">start_year</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">2000</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bins</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">20</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sub_model</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../_modules/komanawa/simple_farm_model/base_simple_farm_model.html#DummySimpleFarm.plot_results"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#komanawa.simple_farm_model.base_simple_farm_model.DummySimpleFarm.plot_results" title="Link to this definition">#</a></dt>
+<dd><p>plot results</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>ys</strong> – <p>one or more of: self.long_name_dict.keys() for instance:</p>
+<ul>
+<li><p>’state’ (state of the system)</p></li>
+<li><p>’feed’ (feed on farm)</p></li>
+<li><p>’money’ (money on farm)</p></li>
+<li><p>’feed_demand’ (feed demand)</p></li>
+<li><p>’prod’ (production)</p></li>
+<li><p>’prod_money’ (production money)</p></li>
+<li><p>’feed_imported’ (feed imported)</p></li>
+<li><p>’feed_cost’ (feed cost)</p></li>
+<li><p>’pg’ (pasture growth)</p></li>
+<li><p>’product_price’ (product price)</p></li>
+<li><p>’sup_feed_cost’ (supplementary feed cost)</p></li>
+</ul>
+</p></li>
+<li><p><strong>x</strong> – x axis to plot against ‘time’ or a ys variable</p></li>
+<li><p><strong>sims</strong> – <p>sim numbers to plot:</p>
+<ul>
+<li><p>None: plot all sims</p></li>
+<li><p>int: plot a single sim</p></li>
+<li><p>iterable of ints: plot multiple sims</p></li>
+<li><p>dictionary with int keys and str values: plot key sims with value labels</p></li>
+</ul>
+</p></li>
+<li><p><strong>mult_as_lines</strong> – bool if True, plot multiple sims as lines, if False, plot multiple sims boxplot style pdf</p></li>
+<li><p><strong>twin_axs</strong> – bool if True, plot each y on twin axis, if False, plot on subplots</p></li>
+<li><p><strong>start_year</strong> – the year to start plotting from (default 2000) only affects the transition from year 1, year2, etc. to datetime</p></li>
+<li><p><strong>bins</strong> – number of bins for mult_as_lines=False and x!=’time’</p></li>
+<li><p><strong>sub_model</strong> – None or another model to plot the difference between the two models (self - sub_model)</p></li>
+<li><p><strong>kwargs</strong> – passed to plt.plot if and only if mult_as_lines=True</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="komanawa.simple_farm_model.base_simple_farm_model.DummySimpleFarm.run_model">
+<span class="sig-name descname"><span class="pre">run_model</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">raise_on_rerun</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rerun</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">printi</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../_modules/komanawa/simple_farm_model/base_simple_farm_model.html#DummySimpleFarm.run_model"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#komanawa.simple_farm_model.base_simple_farm_model.DummySimpleFarm.run_model" title="Link to this definition">#</a></dt>
+<dd><p>run the model see docstring for process
+:param raise_on_rerun: if True, raise an error if the model has already been run, if False, just return (don’t rerun the model)
+:param rerun: if True, rerun the model even if it has already been run
+:param printi: if True, print iteration identifier
+:return:</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="komanawa.simple_farm_model.base_simple_farm_model.DummySimpleFarm.save_results_csv">
+<span class="sig-name descname"><span class="pre">save_results_csv</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">outdir</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sims</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../_modules/komanawa/simple_farm_model/base_simple_farm_model.html#DummySimpleFarm.save_results_csv"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#komanawa.simple_farm_model.base_simple_farm_model.DummySimpleFarm.save_results_csv" title="Link to this definition">#</a></dt>
+<dd><p>save results to csv in outdir with name sim_{sim}.csv</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>outdir</strong> – output directory</p></li>
+<li><p><strong>sims</strong> – sim numbers to save, if None, save all</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="komanawa.simple_farm_model.base_simple_farm_model.DummySimpleFarm.save_results_nc">
+<span class="sig-name descname"><span class="pre">save_results_nc</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">outpath</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../_modules/komanawa/simple_farm_model/base_simple_farm_model.html#DummySimpleFarm.save_results_nc"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#komanawa.simple_farm_model.base_simple_farm_model.DummySimpleFarm.save_results_nc" title="Link to this definition">#</a></dt>
+<dd><p>save results to netcdf file</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>outpath</strong> – path to save file</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="komanawa.simple_farm_model.base_simple_farm_model.DummySimpleFarm.supplemental_action_first">
+<span class="sig-name descname"><span class="pre">supplemental_action_first</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">i_month</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">month</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">day</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">current_state</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">current_feed</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">current_money</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../_modules/komanawa/simple_farm_model/base_simple_farm_model.html#DummySimpleFarm.supplemental_action_first"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#komanawa.simple_farm_model.base_simple_farm_model.DummySimpleFarm.supplemental_action_first" title="Link to this definition">#</a></dt>
+<dd><p>supplemental actions that might be needed for sub models at the end of each time step.  This is a placeholder to allow rapid development without modifying the base class. it is absolutely reasonable to leave as is.
+:param i_month:
+:param month:
+:param day:
+:param current_state:
+:param current_feed:
+:param current_money:
+:return:</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="komanawa.simple_farm_model.base_simple_farm_model.DummySimpleFarm.supplemental_action_last">
+<span class="sig-name descname"><span class="pre">supplemental_action_last</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">i_month</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">month</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">day</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">current_state</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">current_feed</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">current_money</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../_modules/komanawa/simple_farm_model/base_simple_farm_model.html#DummySimpleFarm.supplemental_action_last"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#komanawa.simple_farm_model.base_simple_farm_model.DummySimpleFarm.supplemental_action_last" title="Link to this definition">#</a></dt>
+<dd><p>supplemental actions that might be needed for sub models at the end of each time step.  This is a placeholder to allow rapid development without modifying the base class. it is absolutely reasonable to leave as is.
+:param i_month:
+:param month:
+:param day:
+:param current_state:
+:param current_feed:
+:param current_money:
+:return:</p>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+</section>
+
+
+                </article>
+              
+              
+              
+              
+              
+                <footer class="prev-next-footer d-print-none">
+                  
+<div class="prev-next-area">
+    <a class="left-prev"
+       href="../index.html"
+       title="previous page">
+      <i class="fa-solid fa-angle-left"></i>
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">previous</p>
+        <p class="prev-next-title">komanawa.simple_farm_model</p>
+      </div>
+    </a>
+    <a class="right-next"
+       href="../memory_test/index.html"
+       title="next page">
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">next</p>
+        <p class="prev-next-title">komanawa.simple_farm_model.memory_test</p>
+      </div>
+      <i class="fa-solid fa-angle-right"></i>
+    </a>
+</div>
+                </footer>
+              
+            </div>
+            
+            
+              
+                <div class="bd-sidebar-secondary bd-toc"><div class="sidebar-secondary-items sidebar-secondary__inner">
+
+
+  <div class="sidebar-secondary-item">
+<div
+    id="pst-page-navigation-heading-2"
+    class="page-toc tocsection onthispage">
+    <i class="fa-solid fa-list"></i> On this page
+  </div>
+  <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
+    <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#classes">Classes</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#module-contents">Module Contents</a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#komanawa.simple_farm_model.base_simple_farm_model.BaseSimpleFarmModel"><code class="docutils literal notranslate"><span class="pre">BaseSimpleFarmModel</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#komanawa.simple_farm_model.base_simple_farm_model.BaseSimpleFarmModel.from_input_file"><code class="docutils literal notranslate"><span class="pre">from_input_file()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#komanawa.simple_farm_model.base_simple_farm_model.BaseSimpleFarmModel.import_feed_and_change_state"><code class="docutils literal notranslate"><span class="pre">import_feed_and_change_state()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#komanawa.simple_farm_model.base_simple_farm_model.BaseSimpleFarmModel.output_eq"><code class="docutils literal notranslate"><span class="pre">output_eq()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#komanawa.simple_farm_model.base_simple_farm_model.BaseSimpleFarmModel.plot_results"><code class="docutils literal notranslate"><span class="pre">plot_results()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#komanawa.simple_farm_model.base_simple_farm_model.BaseSimpleFarmModel.run_model"><code class="docutils literal notranslate"><span class="pre">run_model()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#komanawa.simple_farm_model.base_simple_farm_model.BaseSimpleFarmModel.save_results_csv"><code class="docutils literal notranslate"><span class="pre">save_results_csv()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#komanawa.simple_farm_model.base_simple_farm_model.BaseSimpleFarmModel.save_results_nc"><code class="docutils literal notranslate"><span class="pre">save_results_nc()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#komanawa.simple_farm_model.base_simple_farm_model.BaseSimpleFarmModel.supplemental_action_first"><code class="docutils literal notranslate"><span class="pre">supplemental_action_first()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#komanawa.simple_farm_model.base_simple_farm_model.BaseSimpleFarmModel.supplemental_action_last"><code class="docutils literal notranslate"><span class="pre">supplemental_action_last()</span></code></a></li>
+</ul>
+</li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#komanawa.simple_farm_model.base_simple_farm_model.DummySimpleFarm"><code class="docutils literal notranslate"><span class="pre">DummySimpleFarm</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#komanawa.simple_farm_model.base_simple_farm_model.DummySimpleFarm.from_input_file"><code class="docutils literal notranslate"><span class="pre">from_input_file()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#komanawa.simple_farm_model.base_simple_farm_model.DummySimpleFarm.import_feed_and_change_state"><code class="docutils literal notranslate"><span class="pre">import_feed_and_change_state()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#komanawa.simple_farm_model.base_simple_farm_model.DummySimpleFarm.output_eq"><code class="docutils literal notranslate"><span class="pre">output_eq()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#komanawa.simple_farm_model.base_simple_farm_model.DummySimpleFarm.plot_results"><code class="docutils literal notranslate"><span class="pre">plot_results()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#komanawa.simple_farm_model.base_simple_farm_model.DummySimpleFarm.run_model"><code class="docutils literal notranslate"><span class="pre">run_model()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#komanawa.simple_farm_model.base_simple_farm_model.DummySimpleFarm.save_results_csv"><code class="docutils literal notranslate"><span class="pre">save_results_csv()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#komanawa.simple_farm_model.base_simple_farm_model.DummySimpleFarm.save_results_nc"><code class="docutils literal notranslate"><span class="pre">save_results_nc()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#komanawa.simple_farm_model.base_simple_farm_model.DummySimpleFarm.supplemental_action_first"><code class="docutils literal notranslate"><span class="pre">supplemental_action_first()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#komanawa.simple_farm_model.base_simple_farm_model.DummySimpleFarm.supplemental_action_last"><code class="docutils literal notranslate"><span class="pre">supplemental_action_last()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+  </nav></div>
+
+</div></div>
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script src="../../../../_static/scripts/bootstrap.js?digest=3ee479438cf8b5e0d341"></script>
+<script src="../../../../_static/scripts/pydata-sphinx-theme.js?digest=3ee479438cf8b5e0d341"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright 2024, Kо̄manawa Solutions Ltd..
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 7.3.7.
+    <br/>
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.15.3.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>

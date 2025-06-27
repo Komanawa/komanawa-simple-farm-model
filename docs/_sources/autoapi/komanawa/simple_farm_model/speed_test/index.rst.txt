@@ -1,0 +1,178 @@
+komanawa.simple_farm_model.speed_test
+=====================================
+
+.. py:module:: komanawa.simple_farm_model.speed_test
+
+.. autoapi-nested-parse::
+
+   created matt_dumont 
+   on: 8/30/24
+
+
+
+Classes
+-------
+
+.. autoapisummary::
+
+   komanawa.simple_farm_model.speed_test.DairyModelWithSCScarcity
+
+
+Module Contents
+---------------
+
+.. py:class:: DairyModelWithSCScarcity(all_months, istate, pg, ifeed, imoney, sup_feed_cost, product_price, opt_mode='optimised', monthly_input=True, s=None, a=None, b=None, c=None, peak_lact_cow_per_ha=default_peak_cow, ncore_opt=1, logging_level=logging.CRITICAL, cull_dry_step=None, cull_levels=None, dryoff_levels=None, allow_mitigation_delay=False)
+
+   Bases: :py:obj:`SimpleDairyModel`
+
+   .. autoapi-inheritance-diagram:: komanawa.simple_farm_model.speed_test.DairyModelWithSCScarcity
+      :parts: 1
+
+
+   a version with an s-curve scarcity model requiring additional parameters s, a, b, c
+
+   :param all_months: integer months, defines mon_len and time_len
+   :param istate: initial state number or np.ndarray shape (nsims,) defines number of simulations
+   :param pg: pasture growth kgDM/ha/day np.ndarray shape (mon_len,) or (mon_len, nsims)
+   :param ifeed: initial feed number float or np.ndarray shape (nsims,), MJ/ha
+   :param imoney: initial money number float or np.ndarray shape (nsims,) $/ha
+   :param sup_feed_cost: cost of supplementary feed $/MJ float or np.ndarray shape (nsims,) or (mon_len, nsims)
+   :param product_price: income price $/kg product float or np.ndarray shape (nsims,) or (mon_len, nsims)
+   :param opt_mode: one of:
+
+   * 'optimised': use scipy.minimize_scalar to optimise the fraction of cows to cull dryoff at each decision point (cpu intensive, but most precise, low memory) cull_dry_step must be None
+   * 'step': use a fixed step size for cull/dryoff decision (less cpu intensive, less precise, low memory) cull_dry_step must be set
+   * 'coarse': pick the best of an a. priori. number of cull/dryoff decisions (low cpu, high memory, moderate precision) cull_dry_step must be None
+
+   :param monthly_input: if True, monthly input, if False, daily input (365 days per year)
+   :param s: scarcity scurve scale - the maximum value of the curve (if s=1, the maximum value is 1)
+   :param a: scarcity scurve steepness - smoothing parameter as a increases the curve becomes steeper and the inflection point moves to the right
+   :param b: scarcity scurve steepness about the inflection point
+   :param c: scarcity scurve inflection point (if a=1, c is the x value at which y=0.5)
+   :param peak_lact_cow_per_ha: peak lactating cows per ha float
+   :param ncore_opt: number of cores to use for optimization of the cull/dryoff decision if ncore_opt==1, do not multiprocess, if ncore_opt > 1, use ncore_opt cores, if ncore_opt =None, use all available cores
+   :param logging_level: logging level for the multiprocess component
+   :param cull_dry_step: if None, use the optimized cull/dryoff decision, if float, use the cull/dryoff decision with a step size of cull_dry_step
+   :param cull_levels: if opt_mode='coarse' the number of equally spaced cull steps to make, otherwise must be None
+   :param dryoff_levels: if opt_mode='coarse' the number of equally spaced dryoff steps to make, otherwise must be None
+   :param allow_mitigation_delay: if True, allow for a delay in the implementation of the cull/dryoff decision, if False, implement the cull/dryoff decision immediately. In practice this takes the "best" state and asks if delaying the application of the best state for a decision time step is more financially beneficial as compared to immediate implementation.
+
+
+   .. py:method:: calc_feed_scarcity_cost(i_month, start_cum_ann_feed_import, new_feed, use_sup_feed_cost, nsims)
+
+      Calculate the feed scarcity cost based on the previous cumulative feed import and the new feed import
+
+      :param start_cum_ann_feed_import: previous cumulative feed import (one per sim)
+      :param new_feed: new feed import (ndays, nsims)
+      :return: feed scarcity cost ($ for the time period) (NOT $/MJ !) np.ndarray shape (ndays, nsims)
+
+
+
+   .. py:method:: calc_marginal_cost_benefit(i_month, month, current_state, current_feed)
+
+      calculate the marginal cost and benefit of a potential state change
+
+      :param i_month: model step
+      :param month: integer month
+      :param current_state: the current states of all models
+      :return:
+
+
+
+   .. py:method:: calc_next_state_quant_1aday(month, current_state)
+
+      calculate the possible next state down (lower feed requirements) from  the current state
+
+      :param current_state: the current state for all farms
+      :return: actions np.ndarray shape (nsims,) of the actions:
+
+      * 0: no change
+      * 1: cull cows
+      * 2: dryoff cows
+      * 3: go to once a day milking
+
+
+
+   .. py:method:: get_annual_feed()
+
+      get the annual feed needed for each farm (does not include any feed inefficiencies)
+
+      :return: np.ndarray shape (nsims,)
+
+
+
+   .. py:method:: import_feed_and_change_state(i_month, month, current_state, current_feed)
+
+      import feed and change state
+
+      :param i_month: month index
+      :param month: month
+      :param current_state: current state
+      :param current_feed: current feed
+      :return:
+
+
+
+   .. py:method:: plot_scurve(plt_dnz_fs=False, figsize=(10, 10))
+
+      plot the s-curve
+      :param plt_dnz_fs: bool if true plot the dairy nz farm system boundaries.
+      :return:
+
+
+
+   .. py:method:: set_mean_pg(pg_dict, pg_raw=None, months=None)
+
+      This method can be used to set a bespoke mean pasture growth for each month to calculate marginal cost/benefit by default this is called on self.pg in the init method
+
+      one of pg_dict or pg_raw and months must be set
+
+      :param pg_dict: None or dict of pasture growth values for each month, keys are 1-12, values are float or np.ndarray shape (nsims,)
+      :param pg_raw: None or np.ndarray shape (mon_len, nsims) pasture growth values for each day
+      :param months: None or np.ndarray shape (nsims,) of month values for each day
+      :return:
+
+
+
+   .. py:method:: set_mean_product_price(prod_price_dict, prod_price_raw=None, months=None)
+
+      This method can be used to set a bespoke mean pasture growth for each month to calculate marginal cost/benefit by default this is called on self.prod_price in the init method
+
+      one of prod_price_dict or prod_price_raw and months must be set
+
+      :param prod_price_dict: None or dict of pasture growth values for each month, keys are 1-12, values are float or np.ndarray shape (nsims,)
+      :param prod_price_raw: None or np.ndarray shape (mon_len, nsims) pasture growth values for each day
+      :param months: None or np.ndarray shape (nsims,) of month values for each day
+      :return:
+
+
+
+   .. py:method:: set_mean_sup_cost(sup_dict, sup_cost_raw=None, months=None)
+
+      This method can be used to set a bespoke mean supplementary feed cost for each month to calculate marginal cost/benefit by default this is called on self.sup_feedout_cost in the init method
+
+      one of sup_dict or sup_cost_raw and months must be set
+
+      :param sup_dict: None or dict of supplementary feed cost values for each month, keys are 1-12, values are float or np.ndarray shape (nsims,)
+      :param sup_cost_raw: None or np.ndarray shape (mon_len, nsims) supplementary feed cost values for each day
+      :param months: None or np.ndarray shape (nsims,) of month values for each day
+      :return:
+
+
+
+   .. py:method:: supplemental_action_last(i_month, month, day, current_state, current_feed, current_money)
+
+      supplemental actions that might be needed for sub models at the end of each time step.  This is a placeholder to allow rapid development without modifying the base class. it is absolutely reasonable to leave as is.
+
+      Here we use this function to save the cow buckets to output
+
+      :param i_month:
+      :param month:
+      :param day:
+      :param current_state:
+      :param current_feed:
+      :param current_money:
+      :return:
+
+
+

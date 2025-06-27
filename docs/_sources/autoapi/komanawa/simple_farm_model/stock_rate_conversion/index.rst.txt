@@ -1,0 +1,31 @@
+komanawa.simple_farm_model.stock_rate_conversion
+================================================
+
+.. py:module:: komanawa.simple_farm_model.stock_rate_conversion
+
+.. autoapi-nested-parse::
+
+   created matt_dumont 
+   on: 10/8/24
+
+
+
+Functions
+---------
+
+.. autoapisummary::
+
+   komanawa.simple_farm_model.stock_rate_conversion.calc_full_farm_stock_rate
+
+
+Module Contents
+---------------
+
+.. py:function:: calc_full_farm_stock_rate(milk_platform_sr)
+
+   calculate the peak cow (peak lactating cow /ha) for a full farm from the milk platform stocking rate.
+
+   :param milk_platform_sr:
+   :return:
+
+

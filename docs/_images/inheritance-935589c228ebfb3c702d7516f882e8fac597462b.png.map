@@ -1,0 +1,4 @@
+<map id="inheritance151767566a" name="inheritance151767566a">
+<area shape="rect" id="node1" href="base_simple_farm_model/index.html#komanawa.simple_farm_model.base_simple_farm_model.BaseSimpleFarmModel" target="_top" title="Abstract base class for a simple farm economic model." alt="" coords="5,5,176,31"/>
+<area shape="rect" id="node2" href="simple_dairy_model/index.html#komanawa.simple_farm_model.simple_dairy_model.SimpleDairyModel" target="_top" title="A simple dairy farm model that simulates a dairy farm. The model includes methods for calculating feed requirements, production, and marginal costs/benefits, among other things." alt="" coords="224,5,367,31"/>
+</map>

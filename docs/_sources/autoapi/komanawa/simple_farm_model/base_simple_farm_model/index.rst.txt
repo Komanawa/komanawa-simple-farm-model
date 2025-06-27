@@ -1,0 +1,477 @@
+komanawa.simple_farm_model.base_simple_farm_model
+=================================================
+
+.. py:module:: komanawa.simple_farm_model.base_simple_farm_model
+
+.. autoapi-nested-parse::
+
+   created matt_dumont 
+   on: 26/06/23
+
+   This module contains the BaseSimpleFarmModel class and its child class DummySimpleFarm. These classes are used to simulate a simple farm economic model.
+
+   The BaseSimpleFarmModel class is an abstract base class that provides the basic structure and methods for the farm economic model. It includes methods for running the model, saving results to a netCDF file, reading in a model from a netCDF file, saving results to CSV files, and plotting results.
+
+   The DummySimpleFarm class is a child class of BaseSimpleFarmModel. It is a placeholder class that needs to be implemented with specific farm model logic.
+
+   The module also includes a helper function get_colors() for generating a list of colors for plotting, and a dictionary month_len that provides the number of days in each month.
+
+
+
+Classes
+-------
+
+.. autoapisummary::
+
+   komanawa.simple_farm_model.base_simple_farm_model.BaseSimpleFarmModel
+   komanawa.simple_farm_model.base_simple_farm_model.DummySimpleFarm
+
+
+Module Contents
+---------------
+
+.. py:class:: BaseSimpleFarmModel(all_months, istate, pg, ifeed, imoney, sup_feed_cost, product_price, monthly_input=True)
+
+   Bases: :py:obj:`object`
+
+
+   Abstract base class for a simple farm economic model.
+
+   This class provides the basic structure and methods for the farm economic model. It includes methods for running the model, saving results to a netCDF file, reading in a model from a netCDF file, saving results to CSV files, and plotting results.
+
+   The class needs to be subclassed and the following methods need to be implemented in the subclass:
+
+   - convert_pg_to_me()
+   - calculate_feed_needed()
+   - calculate_production()
+   - calculate_sup_feed()
+   - import_feed_and_change_state()
+   - reset_state()
+
+   Class Attributes:
+
+      - :cvar long_name_dict: (dict) Dictionary of attribute name to attribute long name (unit) for display and metadata.
+      - :cvar obj_dict: (dict) Dictionary of attribute name to object name. used to
+
+   Subclass Attributes that must be set in the subclass:
+
+       :cvar states: (dict): Dictionary of state numbers to state descriptions.
+       :cvar month_reset: (int or None): Month number when the farm state is reset. If None then the farm state is not reset.
+       :cvar homegrown_efficiency: (float): Efficiency of homegrown feed (e.g. 0.8 means 20% of feed is lost due to inefficency).
+       :cvar supplemental_efficiency: (float): Efficiency of supplemental feed. (e.g. 0.8 means 20% of feed is lost due to inefficency).
+       :cvar sup_feedout_cost: (float): Cost of feed out. (e.g. 0.5 means $0.50 per MJ of feed).
+       :cvar homegrown_store_efficiency: (float): Efficiency of storing homegrown feed. (e.g. 0.8 means 20% of feed is lost due to inefficency).
+       :cvar homegrown_storage_cost: (float): Cost of storing homegrown feed. (e.g. 0.5 means $0.50 per MJ of feed).
+
+
+   Instance Attributes:
+
+       - Descriptor attributes
+           - :ivar nsims: (int): Number of simulations.
+           - :ivar time_len: (int): Number of time steps in the model.
+           - :ivar model_shape: (tuple): Shape of the model arrays (time_len + 1, nsims).
+           - :ivar _model_input_shape: (tuple): Shape of the model input arrays (time_len, nsims).
+           - :ivar inpath: (Path or None) Path to the input file, if the model was read in from a file.
+           - :ivar all_days: (np.ndarray): Array of day numbers for each time step in the model.
+           - :ivar all_months: (np.ndarray): Array of month numbers for each time step in the model.
+           - :ivar all_year: (np.ndarray): Array of year numbers for each time step in the model.
+           - :ivar _run: (bool): Flag indicating if the model has been run.
+
+       - Model input attributes (all transition to model_shape (time, nsims))
+           - :ivar pg: (np.ndarray): Array of pasture growth amounts for each time step in the model.
+           - :ivar product_price: (np.ndarray): Array of product prices for each time step in the model.
+           - :ivar sup_feed_cost: (np.ndarray): Array of supplementary feed costs for each time step in the model.
+
+       - Model calculation attributes
+           - :ivar model_feed: (np.ndarray): Array of feed amounts for each time step in the model.
+           - :ivar model_feed_cost: (np.ndarray): Array of feed cost amounts for each time step in the model.
+           - :ivar model_feed_demand: (np.ndarray): Array of feed demand amounts for each time step in the model.
+           - :ivar model_feed_imported: (np.ndarray): Array of imported feed amounts for each time step in the model.
+           - :ivar model_money: (np.ndarray): Array of money amounts for each time step in the model.
+           - :ivar model_prod: (np.ndarray): Array of product amounts for each time step in the model.
+           - :ivar model_prod_money: (np.ndarray): Array of product money amounts for each time step in the model.
+           - :ivar model_state: (np.ndarray): Array of state numbers for each time step in the model.
+
+   Process:
+
+       The run_model method in the BaseSimpleFarmModel class is responsible for running the farm economic model. Here's a step-by-step description of the process. The model is run on a daily timestep with an assumed 365 day year:
+
+       #. The method first checks if the model has already been run. If it has, it raises an error, pass, or rerun (see run_model docs).
+       #. It then enters a loop that iterates over each month in the model's timeline. For each month, it performs the following steps:
+           #. It sets the start of day values for current money, current feed, and current state.
+           #. It allows for supplemental actions at the start of the day, if needed. These can be set in the supplmental_action_first method.
+           #. It calculates the pasture growth and converts it to ME (MJ/ha). Both values are stored.
+           #. It calculates the feed needed for the cattle.
+           #. It identifies surplus homegrown feed, deficit feed, and perfect feed scenarios. By applying the feed efficiency (homegrown_efficiency and supplemental_efficiency). If there is surplus homegrown it stores the surplus (which includes a cost per MJ), if supplemental feed (MJ) is needed feeds out the supplemental needed (including supplemental efficiency), which reduces the feed store and incurs a feed out cost.
+           #. It calculates the product produced and stores it.
+           #. It calculates the profit from selling the product and adds it to the current money.
+           #. It assesses the feed store, imports feed if needed, and changes the state of the farm.
+           #. It allows for supplemental actions at the end of the day, if needed. These can be set in the supplmental_action_last method.
+           #. If it's the start of a new year, it resets the state.
+           #. Finally, it sets the key values for the current state, feed, and money.
+       #. After the loop, it sets the _run attribute to True, indicating that the model has been run.
+
+       This method essentially simulates the operation of the farm over time, taking into account various factors such as feed demand, product production, costs, and state transitions.
+
+
+   :param all_months: integer months, defines mon_len and time_len
+   :param istate: initial state number or np.ndarray shape (nsims,) defines number of simulations
+   :param pg: pasture growth kgDM/ha/day np.ndarray shape (mon_len,) or (mon_len, nsims)
+   :param ifeed: initial feed number float or np.ndarray shape (nsims,) MJ/ha
+   :param imoney: initial money number float or np.ndarray shape (nsims,) $/ha
+   :param sup_feed_cost: cost of supplementary feed $/MJ float or np.ndarray shape (nsims,) or (mon_len, nsims)
+   :param product_price: income price $/kg product float or np.ndarray shape (nsims,) or (mon_len, nsims)
+   :param monthly_input: if True, monthly input, if False, daily input (365 days per year)
+
+
+   .. py:method:: from_input_file(inpath)
+      :classmethod:
+
+
+      read in a model from a netcdf file
+
+      :param inpath:
+      :return:
+
+
+
+   .. py:method:: import_feed_and_change_state(i_month, month, current_state, current_feed)
+
+      import feed and change state
+
+      :param i_month: month index
+      :param month: month
+      :param current_state: current state
+      :param current_feed: current feed
+      :return:
+
+
+
+   .. py:method:: output_eq(other, raise_on_diff=False, skip_alt_kwargs=None, compare_idx=None, dimensionality_only=False, rtol=1e-05)
+
+      check if two models are equal
+
+      :param other: Other model
+      :param raise_on_diff: bool if True raise an error if the models are different, if False just return False
+      :param skip_alt_kwargs: None or iterable of alt_kwargs to skip testing
+      :param compare_idx: None or boolean or int index to compare only a subset of the data.  shape=(time, nsims)
+      :param dimensionality_only: bool if True only check the dimensionality of the model, if False check all values
+      :return:
+
+
+
+   .. py:method:: plot_results(*ys, x='time', sims=None, mult_as_lines=True, twin_axs=False, figsize=(10, 8), start_year=2000, bins=20, sub_model=None, **kwargs)
+
+      plot results
+
+      :param ys: one or more of: self.long_name_dict.keys() for instance:
+
+          - 'state' (state of the system)
+          - 'feed' (feed on farm)
+          - 'money' (money on farm)
+          - 'feed_demand' (feed demand)
+          - 'prod' (production)
+          - 'prod_money' (production money)
+          - 'feed_imported' (feed imported)
+          - 'feed_cost' (feed cost)
+          - 'pg' (pasture growth)
+          - 'product_price' (product price)
+          - 'sup_feed_cost' (supplementary feed cost)
+
+      :param x: x axis to plot against 'time' or a ys variable
+      :param sims: sim numbers to plot:
+
+          * None: plot all sims
+          * int: plot a single sim
+          * iterable of ints: plot multiple sims
+          * dictionary with int keys and str values: plot key sims with value labels
+
+      :param mult_as_lines: bool if True, plot multiple sims as lines, if False, plot multiple sims boxplot style pdf
+      :param twin_axs: bool if True, plot each y on twin axis, if False, plot on subplots
+      :param start_year: the year to start plotting from (default 2000) only affects the transition from year 1, year2, etc. to datetime
+      :param bins: number of bins for mult_as_lines=False and x!='time'
+      :param sub_model: None or another model to plot the difference between the two models (self - sub_model)
+      :param kwargs: passed to plt.plot if and only if mult_as_lines=True
+      :return:
+
+
+
+   .. py:method:: run_model(raise_on_rerun=True, rerun=False, printi=False)
+
+      run the model see docstring for process
+      :param raise_on_rerun: if True, raise an error if the model has already been run, if False, just return (don't rerun the model)
+      :param rerun: if True, rerun the model even if it has already been run
+      :param printi: if True, print iteration identifier
+      :return:
+
+
+
+   .. py:method:: save_results_csv(outdir, sims=None)
+
+      save results to csv in outdir with name sim_{sim}.csv
+
+      :param outdir: output directory
+      :param sims: sim numbers to save, if None, save all
+      :return:
+
+
+
+   .. py:method:: save_results_nc(outpath)
+
+      save results to netcdf file
+
+      :param outpath: path to save file
+      :return:
+
+
+
+   .. py:method:: supplemental_action_first(i_month, month, day, current_state, current_feed, current_money)
+
+      supplemental actions that might be needed for sub models at the end of each time step.  This is a placeholder to allow rapid development without modifying the base class. it is absolutely reasonable to leave as is.
+      :param i_month:
+      :param month:
+      :param day:
+      :param current_state:
+      :param current_feed:
+      :param current_money:
+      :return:
+
+
+
+   .. py:method:: supplemental_action_last(i_month, month, day, current_state, current_feed, current_money)
+
+      supplemental actions that might be needed for sub models at the end of each time step.  This is a placeholder to allow rapid development without modifying the base class. it is absolutely reasonable to leave as is.
+      :param i_month:
+      :param month:
+      :param day:
+      :param current_state:
+      :param current_feed:
+      :param current_money:
+      :return:
+
+
+
+.. py:class:: DummySimpleFarm(all_months, istate, pg, ifeed, imoney, sup_feed_cost, product_price, monthly_input=True)
+
+   Bases: :py:obj:`BaseSimpleFarmModel`
+
+   .. autoapi-inheritance-diagram:: komanawa.simple_farm_model.base_simple_farm_model.DummySimpleFarm
+      :parts: 1
+
+
+   Abstract base class for a simple farm economic model.
+
+   This class provides the basic structure and methods for the farm economic model. It includes methods for running the model, saving results to a netCDF file, reading in a model from a netCDF file, saving results to CSV files, and plotting results.
+
+   The class needs to be subclassed and the following methods need to be implemented in the subclass:
+
+   - convert_pg_to_me()
+   - calculate_feed_needed()
+   - calculate_production()
+   - calculate_sup_feed()
+   - import_feed_and_change_state()
+   - reset_state()
+
+   Class Attributes:
+
+      - :cvar long_name_dict: (dict) Dictionary of attribute name to attribute long name (unit) for display and metadata.
+      - :cvar obj_dict: (dict) Dictionary of attribute name to object name. used to
+
+   Subclass Attributes that must be set in the subclass:
+
+       :cvar states: (dict): Dictionary of state numbers to state descriptions.
+       :cvar month_reset: (int or None): Month number when the farm state is reset. If None then the farm state is not reset.
+       :cvar homegrown_efficiency: (float): Efficiency of homegrown feed (e.g. 0.8 means 20% of feed is lost due to inefficency).
+       :cvar supplemental_efficiency: (float): Efficiency of supplemental feed. (e.g. 0.8 means 20% of feed is lost due to inefficency).
+       :cvar sup_feedout_cost: (float): Cost of feed out. (e.g. 0.5 means $0.50 per MJ of feed).
+       :cvar homegrown_store_efficiency: (float): Efficiency of storing homegrown feed. (e.g. 0.8 means 20% of feed is lost due to inefficency).
+       :cvar homegrown_storage_cost: (float): Cost of storing homegrown feed. (e.g. 0.5 means $0.50 per MJ of feed).
+
+
+   Instance Attributes:
+
+       - Descriptor attributes
+           - :ivar nsims: (int): Number of simulations.
+           - :ivar time_len: (int): Number of time steps in the model.
+           - :ivar model_shape: (tuple): Shape of the model arrays (time_len + 1, nsims).
+           - :ivar _model_input_shape: (tuple): Shape of the model input arrays (time_len, nsims).
+           - :ivar inpath: (Path or None) Path to the input file, if the model was read in from a file.
+           - :ivar all_days: (np.ndarray): Array of day numbers for each time step in the model.
+           - :ivar all_months: (np.ndarray): Array of month numbers for each time step in the model.
+           - :ivar all_year: (np.ndarray): Array of year numbers for each time step in the model.
+           - :ivar _run: (bool): Flag indicating if the model has been run.
+
+       - Model input attributes (all transition to model_shape (time, nsims))
+           - :ivar pg: (np.ndarray): Array of pasture growth amounts for each time step in the model.
+           - :ivar product_price: (np.ndarray): Array of product prices for each time step in the model.
+           - :ivar sup_feed_cost: (np.ndarray): Array of supplementary feed costs for each time step in the model.
+
+       - Model calculation attributes
+           - :ivar model_feed: (np.ndarray): Array of feed amounts for each time step in the model.
+           - :ivar model_feed_cost: (np.ndarray): Array of feed cost amounts for each time step in the model.
+           - :ivar model_feed_demand: (np.ndarray): Array of feed demand amounts for each time step in the model.
+           - :ivar model_feed_imported: (np.ndarray): Array of imported feed amounts for each time step in the model.
+           - :ivar model_money: (np.ndarray): Array of money amounts for each time step in the model.
+           - :ivar model_prod: (np.ndarray): Array of product amounts for each time step in the model.
+           - :ivar model_prod_money: (np.ndarray): Array of product money amounts for each time step in the model.
+           - :ivar model_state: (np.ndarray): Array of state numbers for each time step in the model.
+
+   Process:
+
+       The run_model method in the BaseSimpleFarmModel class is responsible for running the farm economic model. Here's a step-by-step description of the process. The model is run on a daily timestep with an assumed 365 day year:
+
+       #. The method first checks if the model has already been run. If it has, it raises an error, pass, or rerun (see run_model docs).
+       #. It then enters a loop that iterates over each month in the model's timeline. For each month, it performs the following steps:
+           #. It sets the start of day values for current money, current feed, and current state.
+           #. It allows for supplemental actions at the start of the day, if needed. These can be set in the supplmental_action_first method.
+           #. It calculates the pasture growth and converts it to ME (MJ/ha). Both values are stored.
+           #. It calculates the feed needed for the cattle.
+           #. It identifies surplus homegrown feed, deficit feed, and perfect feed scenarios. By applying the feed efficiency (homegrown_efficiency and supplemental_efficiency). If there is surplus homegrown it stores the surplus (which includes a cost per MJ), if supplemental feed (MJ) is needed feeds out the supplemental needed (including supplemental efficiency), which reduces the feed store and incurs a feed out cost.
+           #. It calculates the product produced and stores it.
+           #. It calculates the profit from selling the product and adds it to the current money.
+           #. It assesses the feed store, imports feed if needed, and changes the state of the farm.
+           #. It allows for supplemental actions at the end of the day, if needed. These can be set in the supplmental_action_last method.
+           #. If it's the start of a new year, it resets the state.
+           #. Finally, it sets the key values for the current state, feed, and money.
+       #. After the loop, it sets the _run attribute to True, indicating that the model has been run.
+
+       This method essentially simulates the operation of the farm over time, taking into account various factors such as feed demand, product production, costs, and state transitions.
+
+
+   :param all_months: integer months, defines mon_len and time_len
+   :param istate: initial state number or np.ndarray shape (nsims,) defines number of simulations
+   :param pg: pasture growth kgDM/ha/day np.ndarray shape (mon_len,) or (mon_len, nsims)
+   :param ifeed: initial feed number float or np.ndarray shape (nsims,) MJ/ha
+   :param imoney: initial money number float or np.ndarray shape (nsims,) $/ha
+   :param sup_feed_cost: cost of supplementary feed $/MJ float or np.ndarray shape (nsims,) or (mon_len, nsims)
+   :param product_price: income price $/kg product float or np.ndarray shape (nsims,) or (mon_len, nsims)
+   :param monthly_input: if True, monthly input, if False, daily input (365 days per year)
+
+
+   .. py:method:: from_input_file(inpath)
+      :classmethod:
+
+
+      read in a model from a netcdf file
+
+      :param inpath:
+      :return:
+
+
+
+   .. py:method:: import_feed_and_change_state(i_month, month, current_state, current_feed)
+
+      import feed and change state
+
+      :param i_month: month index
+      :param month: month
+      :param current_state: current state
+      :param current_feed: current feed
+      :return:
+
+
+
+   .. py:method:: output_eq(other, raise_on_diff=False, skip_alt_kwargs=None, compare_idx=None, dimensionality_only=False, rtol=1e-05)
+
+      check if two models are equal
+
+      :param other: Other model
+      :param raise_on_diff: bool if True raise an error if the models are different, if False just return False
+      :param skip_alt_kwargs: None or iterable of alt_kwargs to skip testing
+      :param compare_idx: None or boolean or int index to compare only a subset of the data.  shape=(time, nsims)
+      :param dimensionality_only: bool if True only check the dimensionality of the model, if False check all values
+      :return:
+
+
+
+   .. py:method:: plot_results(*ys, x='time', sims=None, mult_as_lines=True, twin_axs=False, figsize=(10, 8), start_year=2000, bins=20, sub_model=None, **kwargs)
+
+      plot results
+
+      :param ys: one or more of: self.long_name_dict.keys() for instance:
+
+          - 'state' (state of the system)
+          - 'feed' (feed on farm)
+          - 'money' (money on farm)
+          - 'feed_demand' (feed demand)
+          - 'prod' (production)
+          - 'prod_money' (production money)
+          - 'feed_imported' (feed imported)
+          - 'feed_cost' (feed cost)
+          - 'pg' (pasture growth)
+          - 'product_price' (product price)
+          - 'sup_feed_cost' (supplementary feed cost)
+
+      :param x: x axis to plot against 'time' or a ys variable
+      :param sims: sim numbers to plot:
+
+          * None: plot all sims
+          * int: plot a single sim
+          * iterable of ints: plot multiple sims
+          * dictionary with int keys and str values: plot key sims with value labels
+
+      :param mult_as_lines: bool if True, plot multiple sims as lines, if False, plot multiple sims boxplot style pdf
+      :param twin_axs: bool if True, plot each y on twin axis, if False, plot on subplots
+      :param start_year: the year to start plotting from (default 2000) only affects the transition from year 1, year2, etc. to datetime
+      :param bins: number of bins for mult_as_lines=False and x!='time'
+      :param sub_model: None or another model to plot the difference between the two models (self - sub_model)
+      :param kwargs: passed to plt.plot if and only if mult_as_lines=True
+      :return:
+
+
+
+   .. py:method:: run_model(raise_on_rerun=True, rerun=False, printi=False)
+
+      run the model see docstring for process
+      :param raise_on_rerun: if True, raise an error if the model has already been run, if False, just return (don't rerun the model)
+      :param rerun: if True, rerun the model even if it has already been run
+      :param printi: if True, print iteration identifier
+      :return:
+
+
+
+   .. py:method:: save_results_csv(outdir, sims=None)
+
+      save results to csv in outdir with name sim_{sim}.csv
+
+      :param outdir: output directory
+      :param sims: sim numbers to save, if None, save all
+      :return:
+
+
+
+   .. py:method:: save_results_nc(outpath)
+
+      save results to netcdf file
+
+      :param outpath: path to save file
+      :return:
+
+
+
+   .. py:method:: supplemental_action_first(i_month, month, day, current_state, current_feed, current_money)
+
+      supplemental actions that might be needed for sub models at the end of each time step.  This is a placeholder to allow rapid development without modifying the base class. it is absolutely reasonable to leave as is.
+      :param i_month:
+      :param month:
+      :param day:
+      :param current_state:
+      :param current_feed:
+      :param current_money:
+      :return:
+
+
+
+   .. py:method:: supplemental_action_last(i_month, month, day, current_state, current_feed, current_money)
+
+      supplemental actions that might be needed for sub models at the end of each time step.  This is a placeholder to allow rapid development without modifying the base class. it is absolutely reasonable to leave as is.
+      :param i_month:
+      :param month:
+      :param day:
+      :param current_state:
+      :param current_feed:
+      :param current_money:
+      :return:
+
+
+
