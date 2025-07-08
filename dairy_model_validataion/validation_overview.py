@@ -53,8 +53,8 @@ def make_summary_plot():
             axs.append(fig.add_subplot(gs[i + 1, j]))
 
     titles = ['Production\n($kgMS~ha^{-1}$)',
-              'F. demand\n($kgDM~ha^{-1}$)',
-              'F. imported\n($kgDM~ha^{-1}$)',
+              'Feed demand\n($kgDM~ha^{-1}$)',
+              'Feed imported\n($kgDM~ha^{-1}$)',
               'Gross\n($ \\$~ha^{-1}$)',
               'Expenses\n($ \\$~ha^{-1}$)',
               'Net\n($ \\$~ha^{-1}$)',
@@ -106,7 +106,7 @@ def make_summary_plot():
     fig.supxlabel('Modelled (This work)')
     fig.supylabel('Reported (Observed - Farmmax model)')
     fig.tight_layout()
-    fig.savefig(Path(__file__).parent.joinpath('summary_plot.png'), dpi=300)
+    fig.savefig(Path(__file__).parent.joinpath('summary_plot.png'), dpi=600)
     plt.show()
 
 
