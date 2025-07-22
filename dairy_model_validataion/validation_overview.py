@@ -104,7 +104,7 @@ def make_summary_plot():
         ax.text(0.05, 0.95, t, transform=ax.transAxes, bbox=dict(facecolor='w', alpha=0.5), va='top', ha='left')
 
     fig.supxlabel('Modelled (This work)')
-    fig.supylabel('Reported (Observed - Farmmax model)')
+    fig.supylabel('Reported (Observed - FARMAX model)')
     fig.tight_layout()
     fig.savefig(Path(__file__).parent.joinpath('summary_plot.png'), dpi=600)
     plt.show()
