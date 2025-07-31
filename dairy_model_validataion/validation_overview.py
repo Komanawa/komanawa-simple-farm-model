@@ -4,6 +4,8 @@ on: 10/13/24
 """
 import numpy as np
 import matplotlib.pyplot as plt
+import pandas as pd
+
 from ludf import raw_full_farm_run as ludf_ff
 from ludf import dairy_platform_run as ludf_mp
 from kok_et_al_2022 import unmodified_comparison as kok_ff
@@ -110,5 +112,53 @@ def make_summary_plot():
     plt.show()
 
 
+def print_rmses():
+    titles = ['Production\n($kgMS~ha^{-1}$)',
+              'Feed demand\n($kgDM~ha^{-1}$)',
+              'Feed imported\n($kgDM~ha^{-1}$)',
+              'Gross\n($ \\$~ha^{-1}$)',
+              'Expenses\n($ \\$~ha^{-1}$)',
+              'Net\n($ \\$~ha^{-1}$)',
+              ]
+    keys = [
+        'prod',
+        'feed_d',
+        'feed_i',
+        'gross',
+        'exp',
+        'net',
+    ]
+
+    rmses = pd.DataFrame(dtype=float)
+    for lf, mf, kf in zip([ludf_ff, ludf_mp], [mac_ff, mac_mp], [kok_ff, kok_mp]):
+        ludf = lf(False)
+        kok = kf()
+        mac = mf()
+        all_data = pd.concat([ludf, mac, kok], axis=0)
+        all_wo_mac = pd.concat([ludf, kok], axis=0)
+
+        for key, nicekey in zip(keys, titles):
+            nicekey = nicekey.split('\n')[0]  # remove units for the column name
+            for df, name in zip([ludf, mac, kok, all_data, all_wo_mac],
+                                ['LUDF', 'Mac', 'Kok', 'All', 'All ex. Mac']):
+
+                x = df[f'{key}_mod']
+                y = df[f'{key}_mes']
+                rmse = np.sqrt(np.nanmean((x - y) ** 2))
+                rmses.loc[name, nicekey] = rmse
+    rmses = rmses.round(2)
+    print('RMSEs:')
+    print(rmses)
+    from komanawa.ksl_tools.writeup_support import make_latex_table
+
+    s = make_latex_table(None, rmses, frac_txt_width=0.85, table_loc=None, label='rmse',
+                     caption='Root mean squared errors of the farm model validation',
+                         float_format='{:,.2f}', ksltable=False, )
+    with Path.home().joinpath('Downloads','rmse_table.tex').open('w') as f:
+        f.write('% made from komanawa-simple-farm-model.validation_overview.print_rmses')
+        f.write(s)
+
+
 if __name__ == '__main__':
-    make_summary_plot()
+    #make_summary_plot()
+    print_rmses()
