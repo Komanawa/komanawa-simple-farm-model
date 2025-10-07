@@ -5,7 +5,7 @@ on: 10/13/24
 import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
-
+import scipy
 from ludf import raw_full_farm_run as ludf_ff
 from ludf import dairy_platform_run as ludf_mp
 from kok_et_al_2022 import unmodified_comparison as kok_ff
@@ -57,9 +57,9 @@ def make_summary_plot():
     titles = ['Production\n($kgMS~ha^{-1}$)',
               'Feed demand\n($kgDM~ha^{-1}$)',
               'Feed imported\n($kgDM~ha^{-1}$)',
-              'Gross\n($ \\$~ha^{-1}$)',
-              'Expenses\n($ \\$~ha^{-1}$)',
-              'Net\n($ \\$~ha^{-1}$)',
+              'Gross ($ \\$~ha^{-1}$)',
+              'Expenses ($ \\$~ha^{-1}$)',
+              'Net ($ \\$~ha^{-1}$)',
               ]
     keys = [
         'prod',
@@ -94,7 +94,29 @@ def make_summary_plot():
                     lims[key].extend([x, y])
                     ax.scatter(x, y, color=color, marker=marker)
 
-    for t, ax, l in zip(titles, axs, keys):
+    # todo make r2 values and add to titles
+    use_titles = []
+    for key, basetitle in zip(keys, titles):
+        meas = []
+        mod = []
+        study = []
+        for df, st in zip([ludf, mac, kok], ['ludf', 'mac', 'kok']):
+            meas.extend(df[f'{key}_mes'].values)
+            mod.extend(df[f'{key}_mod'].values)
+            study.extend([st]*len(df))
+        meas = np.array(meas)
+        mod = np.array(mod)
+        study = np.array(study)
+        r2 = 1 - (np.nansum((meas - mod) ** 2) / np.nansum((meas - np.nanmean(meas)) ** 2))
+        if key in ['exp','net']:
+            meas_m = meas[study != 'mac']
+            mod_m = mod[study != 'mac']
+            r2_wo_mac = 1 - (np.nansum((meas_m - mod_m) ** 2) / np.nansum((meas_m - np.nanmean(meas_m)) ** 2))
+            use_titles.append(f'{basetitle}\n'+'$R^2_{1:1}$'+f'={r2:.2f}\n'+'$R^2_{1:1, EM}$'+f'={r2_wo_mac:.2f}')
+        else:
+            use_titles.append(f'{basetitle}\n'+'$R^2_{1:1}$'+f'={r2:.2f}')
+
+    for t, ax, l in zip(use_titles, axs, keys):
         ll = np.nanmin(lims[l]) - np.nanmax(lims[l]) * 0.05
         ul = np.nanmax(lims[l]) * 1.05
 
@@ -108,8 +130,8 @@ def make_summary_plot():
     fig.supxlabel('Modelled (This work)')
     fig.supylabel('Reported (Observed - FARMAX model)')
     fig.tight_layout()
-    fig.savefig(Path(__file__).parent.joinpath('summary_plot.png'), dpi=600)
     plt.show()
+    fig.savefig(Path(__file__).parent.joinpath('summary_plot.png'), dpi=600)
 
 
 def print_rmses():
@@ -130,6 +152,7 @@ def print_rmses():
     ]
 
     rmses = pd.DataFrame(dtype=float)
+    mae = pd.DataFrame(dtype=float)
     for lf, mf, kf in zip([ludf_ff, ludf_mp], [mac_ff, mac_mp], [kok_ff, kok_mp]):
         ludf = lf(False)
         kok = kf()
@@ -146,9 +169,13 @@ def print_rmses():
                 y = df[f'{key}_mes']
                 rmse = np.sqrt(np.nanmean((x - y) ** 2))
                 rmses.loc[name, nicekey] = rmse
+                mae_val = np.nanmean(np.abs(x - y))
+                mae.loc[name, nicekey] = mae_val
     rmses = rmses.round(2)
     print('RMSEs:')
     print(rmses)
+    print('MAEs:')
+    print(mae)
     from komanawa.ksl_tools.writeup_support import make_latex_table
 
     s = make_latex_table(None, rmses, frac_txt_width=0.85, table_loc=None, label='rmse',
@@ -157,8 +184,14 @@ def print_rmses():
     with Path.home().joinpath('Downloads','rmse_table.tex').open('w') as f:
         f.write('% made from komanawa-simple-farm-model.validation_overview.print_rmses')
         f.write(s)
+    s = make_latex_table(None, mae, frac_txt_width=0.85, table_loc=None, label='rmse',
+                     caption='Mean absolute errors of the farm model validation',
+                         float_format='{:,.2f}', ksltable=False, )
+    with Path.home().joinpath('Downloads','mae_table.tex').open('w') as f:
+        f.write('% made from komanawa-simple-farm-model.validation_overview.print_rmses')
+        f.write(s)
 
 
 if __name__ == '__main__':
-    #make_summary_plot()
+    make_summary_plot()
     print_rmses()
