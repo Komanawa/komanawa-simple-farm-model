@@ -153,6 +153,7 @@ def print_rmses():
 
     rmses = pd.DataFrame(dtype=float)
     mae = pd.DataFrame(dtype=float)
+    mean_observed = pd.DataFrame(dtype=float)
     for lf, mf, kf in zip([ludf_ff, ludf_mp], [mac_ff, mac_mp], [kok_ff, kok_mp]):
         ludf = lf(False)
         kok = kf()
@@ -171,6 +172,7 @@ def print_rmses():
                 rmses.loc[name, nicekey] = rmse
                 mae_val = np.nanmean(np.abs(x - y))
                 mae.loc[name, nicekey] = mae_val
+                mean_observed.loc[name, nicekey] = np.nanmean(y)
     rmses = rmses.round(2)
     print('RMSEs:')
     print(rmses)
@@ -182,16 +184,23 @@ def print_rmses():
                      caption='Root mean squared errors of the farm model validation',
                          float_format='{:,.2f}', ksltable=False, )
     with Path.home().joinpath('Downloads','rmse_table.tex').open('w') as f:
-        f.write('% made from komanawa-simple-farm-model.validation_overview.print_rmses')
+        f.write('% made from komanawa-simple-farm-model.validation_overview.print_rmses\n')
         f.write(s)
-    s = make_latex_table(None, mae, frac_txt_width=0.85, table_loc=None, label='rmse',
+    s = make_latex_table(None, mae, frac_txt_width=0.85, table_loc=None, label='mae',
                      caption='Mean absolute errors of the farm model validation',
                          float_format='{:,.2f}', ksltable=False, )
     with Path.home().joinpath('Downloads','mae_table.tex').open('w') as f:
-        f.write('% made from komanawa-simple-farm-model.validation_overview.print_rmses')
+        f.write('% made from komanawa-simple-farm-model.validation_overview.print_rmses\n')
+        f.write(s)
+
+    s = make_latex_table(None, mean_observed, frac_txt_width=0.85, table_loc=None, label='mean_observed',
+                     caption='Mean observed values of the farm model validation',
+                         float_format='{:,.2f}', ksltable=False, )
+    with Path.home().joinpath('Downloads','mean_observed_table.tex').open('w') as f:
+        f.write('% made from komanawa-simple-farm-model.validation_overview.print_rmses\n')
         f.write(s)
 
 
 if __name__ == '__main__':
-    make_summary_plot()
+    #make_summary_plot()
     print_rmses()
