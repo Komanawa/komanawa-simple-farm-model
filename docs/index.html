@@ -39,6 +39,7 @@
     <script src="_static/documentation_options.js?v=69c7a37b"></script>
     <script src="_static/doctools.js?v=9a2dae69"></script>
     <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script async="async" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
     <script>DOCUMENTATION_OPTIONS.pagename = 'index';</script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
@@ -224,6 +225,10 @@
   
 
   
+    <button class="sidebar-toggle secondary-toggle" aria-label="On this page">
+      <span class="fa-solid fa-outdent"></span>
+    </button>
+  
 </div>
 
     </header>
@@ -346,11 +351,110 @@
 <dd class="field-odd"><p>v0.1.2</p>
 </dd>
 <dt class="field-even">Date<span class="colon">:</span></dt>
-<dd class="field-even"><p>Jun 27, 2025</p>
+<dd class="field-even"><p>Apr 20, 2026</p>
 </dd>
 </dl>
 <div class="toctree-wrapper compound">
 </div>
+<section id="general-description">
+<h2>General Description<a class="headerlink" href="#general-description" title="Link to this heading">#</a></h2>
+<p>This simple farm model is an economic / metabolic farm model that is used to estimate economic outputs from pasture production inputs.
+The packaged has a base farm class (BaseSimpleFarmModel), which handles much of the base logic of the model and can then be subclassed to create specific farm types.</p>
+<p>BaseSimpleFarmModel process includes:</p>
+<p>The run_model method in the BaseSimpleFarmModel class is responsible for running the farm economic model. Here’s a step-by-step description of the process. The model is run on a daily timestep with an assumed 365 day year:</p>
+<ol class="arabic simple">
+<li><p>The method first checks if the model has already been run. If it has, it raises an error, pass, or rerun (see run_model docs).</p></li>
+<li><dl class="simple">
+<dt>It then enters a loop that iterates over each month in the model’s timeline. For each month, it performs the following steps:</dt><dd><ol class="arabic simple">
+<li><p>It sets the start of day values for current money, current feed, and current state.</p></li>
+<li><p>It allows for supplemental actions at the start of the day, if needed. These can be set in the supplmental_action_first method.</p></li>
+<li><p>It calculates the pasture growth and converts it to ME (MJ/ha). Both values are stored.</p></li>
+<li><p>It calculates the feed needed for the cattle.</p></li>
+<li><p>It identifies surplus homegrown feed, deficit feed, and perfect feed scenarios. By applying the feed efficiency (homegrown_efficiency and supplemental_efficiency). If there is surplus homegrown it stores the surplus (which includes a cost per MJ), if supplemental feed (MJ) is needed feeds out the supplemental needed (including supplemental efficiency), which reduces the feed store and incurs a feed out cost.</p></li>
+<li><p>It calculates the product produced and stores it.</p></li>
+<li><p>It calculates the profit from selling the product and adds it to the current money.</p></li>
+<li><p>It assesses the feed store, imports feed if needed, and changes the state of the farm.</p></li>
+<li><p>It allows for supplemental actions at the end of the day, if needed. These can be set in the supplmental_action_last method.</p></li>
+<li><p>If it’s the start of a new year, it resets the state.</p></li>
+<li><p>Finally, it sets the key values for the current state, feed, and money.</p></li>
+</ol>
+</dd>
+</dl>
+</li>
+<li><p>After the loop, it sets the _run attribute to True, indicating that the model has been run.</p></li>
+</ol>
+<p>Description of how to subclass the BaseSimpleFarmModel is given in the docstring for the class.</p>
+</section>
+<section id="simple-dairy-farm-model">
+<h2>Simple Dairy Farm Model<a class="headerlink" href="#simple-dairy-farm-model" title="Link to this heading">#</a></h2>
+<p>The Simple Dairy Farm Model is a specific implementation of the BaseSimpleFarmModel that was used to assess the economic viability of typological dairy farms in Waimakariri region of New Zealand under high dimensional climate variability scenarios.
+The base logic is the same as the BaseSimpleFarmModel.
+There is also a variant that implements a S-curve cost function for importing additional feel.
+This variant allows for a non-hard limit on feed imports associated with feed availability limitations.</p>
+<p>Our farm model is a simple, per-hectare, daily metabolic model that
+simulates: the milk production of a dairy herd, the feed demand of the
+herd, and the associated replacement stock (typically 22%) for one or
+more (July to June). Dairy farms typically report stocking rates as the
+milking platform stocking rate. Our model includes the full farm,
+therefore we convert the milking platform stocking rate to a full farm
+stocking rate based on livestock unit equivalents. The variable
+inputs to the farm economic model are: the pasture growth (kg DM
+day<sup>-1</sup>), starting feed store (MJ ME ha<sup>-1</sup>), stock rate,
+milk, and feed prices. The model logic is diagrammed in
+<a class="reference external" href="#fig:farm_model">[fig:farm_model]</a>.</p>
+<figure class="align-default">
+<a class="reference internal image-reference" href="_images/farm_model_flow_chart_v2.png"><img alt="" src="_images/farm_model_flow_chart_v2.png" style="width: 95.0%;" />
+</a>
+</figure>
+<p>Lactating cows are assumed to produce 559 kg milk solids (MS)
+year<sup>-1</sup>, with a metabolic demand of 123.19 MJ ME
+kgMS<sup>-1</sup>. Replacement stock and non-lactating stock are assumed
+to have a metabolic demand of 70.4 and 66.0 – 102.3 MJ ME
+day<sup>-1</sup>, respectively. The metabolic demands are based on the
+reported metabolic requirements and production statistics for North
+Canterbury Farms.  These values can be easily changed by subclassing and adjusting the class attribute values.</p>
+<p>The model is run on a daily timestep with an assumed 365-day year. The
+model simplifies the farm into three cow types (lactating cows, dry
+cows, and replacement cows). The maximum precision of the model is
+<span class="math notranslate nohighlight">\(1\times10^{-3}\)</span> cows. Peak lactating cows, the starting feed
+store value, the milk solid price, the supplemental feed cost, and the
+daily pasture growth rate are prescribed as an inputs to the model. The
+replacement rate is assumed to be 22% Additional replacements (year 1
+replacements) are added at the end of November (raising the percentage
+of replacement cows to 44%) and replacements are transitioned into dry
+cows at the end of May (reducing the percentage of replacement cows to
+22%). All cows are dried off in June and July. The basic model process is as follows:</p>
+<p>The daily process is:</p>
+<ol class="arabic simple">
+<li><p>It sets the start of day values for current money, current feed,  and current state.</p></li>
+<li><p>It converts the provided pasture growth to ME (MJ/ha). Both values  are stored.</p></li>
+<li><p>It calculates the total milk solids production for the day, which  is defined as <span class="math notranslate nohighlight">\(MS = stocking~rate \times fraction~of~lactating~cows \times the~milk~solid~per~cow~production\)</span></p></li>
+<li><p>It calculates the gross income for the day  (<span class="math notranslate nohighlight">\(milk~solids \times milk~price\)</span>).</p></li>
+<li><p>It calculates the raw feed needed for the cattle. The feed is a  function of the stocking rate, the proportion of each cow type,  and, in the case of the lactating cows, the <em>a. priori.</em> per cow  milk production.</p></li>
+<li><p>It calculates the feed demand that is met by the homegrown feed  (<span class="math notranslate nohighlight">\(homegrown~feed \times homegrown~feed~efficiency\)</span>).</p></li>
+<li><p>Where there is a deficit in feed demand, it calculates the feed  needed from the feed store  (<span class="math notranslate nohighlight">\(feed~store \times supplemental~feed~efficiency\)</span>). This  process incurs a feed out cost.</p></li>
+<li><p>Where there is surplus homegrown feed, it stores the surplus at the harvest efficiency. This process incurs a cost.</p></li>
+<li><p>It assesses the feed store, if the feed store is below a threshold value it imports additional feed at the supplemental cost + the  feed scarcity cost.</p></li>
+</ol>
+<p>On the 1<sup>st</sup> and 15<sup>th</sup> of each month, the model optimises the farm state. The process is:</p>
+<ol class="arabic simple">
+<li><p>It uses the true pasture growth rate (prescribed as an input), the  current stored feed, and the current cow fractions to calculate  the supplementary feed needed to meet the feed demand, the cost of  this feed (including the feed scarcity cost), and the amount and  value of the milk solids produced.</p></li>
+<li><p>It then sets a range of alternate scenarios and calculates the  feed demand, feed cost, and milk solids production for each  alternate scenario.</p></li>
+<li><dl class="simple">
+<dt>the alternate scenarios are:</dt><dd><ol class="arabic simple">
+<li><p>culling stock up to the replacement rate (22%)</p></li>
+<li><p>drying a fraction of the lactating cows off, which significantly reduces the feed demand</p></li>
+<li><p>only culling or drying off can occur in a given alternate    scenario, not both.</p></li>
+</ol>
+</dd>
+</dl>
+</li>
+<li><p>It selects the scenario that maximises the net income (<span class="math notranslate nohighlight">\(Gross-Feed~costs\)</span>).</p></li>
+<li><p>Once stock has been culled or dried off they cannot be replaced  until the end of May.</p></li>
+</ol>
+<p>At the end of the month an <em>a. priori.</em> cow loss rate is applied to the dry and lactating cows fractions. The replacement cows are assumed to be unaffected by this loss rate.</p>
+<p>See the code documentation and the code for more details on the implementation of the Simple Dairy Farm Model and its S-curve variant.</p>
+</section>
 </section>
 
 
@@ -378,6 +482,24 @@
             </div>
             
             
+              
+                <div class="bd-sidebar-secondary bd-toc"><div class="sidebar-secondary-items sidebar-secondary__inner">
+
+
+  <div class="sidebar-secondary-item">
+<div
+    id="pst-page-navigation-heading-2"
+    class="page-toc tocsection onthispage">
+    <i class="fa-solid fa-list"></i> On this page
+  </div>
+  <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
+    <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#general-description">General Description</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#simple-dairy-farm-model">Simple Dairy Farm Model</a></li>
+</ul>
+  </nav></div>
+
+</div></div>
               
             
           </div>

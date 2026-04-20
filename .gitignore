@@ -174,3 +174,4 @@ auxil/*
 
 # sphinx autoapi build files
 /docs_build/autoapi/
+/docs_build/_static/.$farm_model_flow_chart_v2.drawio.bkp

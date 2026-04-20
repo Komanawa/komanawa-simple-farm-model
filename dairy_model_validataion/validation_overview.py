@@ -94,7 +94,7 @@ def make_summary_plot():
                     lims[key].extend([x, y])
                     ax.scatter(x, y, color=color, marker=marker)
 
-    # todo make r2 values and add to titles
+    # make r2 values and add to titles
     use_titles = []
     for key, basetitle in zip(keys, titles):
         meas = []
